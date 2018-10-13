@@ -53,8 +53,7 @@ class PageGrabber extends Thread
 				}
 			} catch (java.io.IOException ioe)
 			{
-				m_stats.setStatus(PageStats.IOError);
-				m_stats.setErrorString("Error making or reading from connection" + ioe.toString());
+				m_stats.setError(ErrorType.IOError, "Error making or reading from connection" + ioe.toString());
 			}
 		}
 		// System.out.println("finished: " + url);
@@ -67,8 +66,7 @@ class PageGrabber extends Thread
 		int responseCode = connection.getResponseCode();
 		if (responseCode != HttpURLConnection.HTTP_OK)
 		{
-			stats.setStatus(PageStats.HTTPError);
-			stats.setErrorString(connection.getResponseMessage());
+			stats.setError(ErrorType.HTTPError, connection.getResponseMessage());
 		} else
 		{
 			stats.contentType = connection.getContentType();
@@ -103,12 +101,10 @@ class PageGrabber extends Thread
 			doc.accept(new HtmlLinkGrabber(stats));
 		} catch (com.quiotix.html.parser.ParseException e)
 		{
-			stats.setStatus(PageStats.HTMLParseError);
-			stats.setErrorString(e.toString());
+			stats.setError(ErrorType.HTMLParseError, e.toString());
 		} catch (com.quiotix.html.parser.TokenMgrError err)
 		{
-			stats.setStatus(PageStats.HTMLParseError);
-			stats.setErrorString(err.toString());
+			stats.setError(ErrorType.HTMLParseError, err.toString());
 		}
 	}
 

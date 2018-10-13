@@ -198,20 +198,16 @@ public class ThreadManager extends Thread implements TableModel
 		m_scheduledPause = pause;
 	}
 
-	public synchronized void sortByColumn(int columnIndex, int direction)
+	public synchronized void sortByColumn(int columnIndex, boolean descending)
 	{
-		if (m_statsAll != null)
+		if (m_statsAll != null && m_statsAll.size() > 0)
 		{
-			if (m_statsAll.size() > 0)
-			{
-				Comparator<PageStats> c = PageStats.getComparator(columnIndex, direction);
-				Collections.sort(m_statsAll, c);
-				fireTableModelListeners(new TableModelEvent(this));
-			}
+			Collections.sort(m_statsAll, new StatsComparator(columnIndex, descending));
+			fireTableModelListeners(new TableModelEvent(this));
 		}
 	}
 
-	public int getRowState(int row)
+	public PageState getRowState(int row)
 	{
 		return m_statsAll.get(row).getRunState();
 	}

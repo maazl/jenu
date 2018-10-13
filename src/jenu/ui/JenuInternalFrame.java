@@ -5,7 +5,6 @@ import javax.swing.JInternalFrame;
 import javax.swing.JTable;
 import javax.swing.table.TableModel;
 
-import jenu.worker.PageStats;
 import jenu.worker.ThreadManager;
 
 import javax.swing.table.DefaultTableCellRenderer;
@@ -150,24 +149,18 @@ public final class JenuInternalFrame extends JInternalFrame
 			return renderersByColor.get(color);
 		}
 
-		public class MyHeaderListener extends MouseAdapter
+		private final class MyHeaderListener extends MouseAdapter
 		{
 			int m_sortColumn = -1;
-			int m_direction;
+			boolean m_descending;
 
 			public void mouseClicked(MouseEvent e)
 			{
 				int column = getTableHeader().columnAtPoint(e.getPoint());
 				if (column >= 0)
-				{
-					if (column != m_sortColumn)
-						m_direction = PageStats.ASCENDING;
-					else if (m_direction == PageStats.ASCENDING)
-						m_direction = PageStats.DECENDING;
-					else
-						m_direction = PageStats.ASCENDING;
+				{	m_descending = column == m_sortColumn & !m_descending;
 					m_sortColumn = column;
-					m_tm.sortByColumn(m_sortColumn, m_direction);
+					m_tm.sortByColumn(m_sortColumn, m_descending);
 				}
 			}
 		}

@@ -2,42 +2,27 @@ package jenu.worker;
 
 import java.net.URL;
 import java.util.Date;
+import java.util.EnumSet;
 import java.util.Vector;
 import java.text.DateFormat;
 import java.net.MalformedURLException;
-import java.util.Comparator;
 import java.awt.Color;
 
 public final class PageStats
 {
-	public static final int	OK							= 0;
-	public static final int	IOError					= 1 << 1;
-	public static final int	HTMLParseError	= 1 << 2;
-	public static final int	InvalidLinks		= 1 << 3;
-	public static final int	HTTPError				= 1 << 4;
-	public static final int	URLError				= 1 << 5;
-
-	public static final int	PENDING	= 0;
-	public static final int	RUNNING	= 1;
-	public static final int	DONE		= 2;
-	public static final int	RETRY		= 3;
-
-	public static final int	ASCENDING	= 1;
-	public static final int	DECENDING	= 2;
-
-	int										runState		= PENDING;
-	public int						status			= OK;
-	String								errorString	= "";
-	public String					contentType	= null;
-	public int						size				= -1;
-	public String					title				= null;
-	public Date						date				= null;
-	public int						level				= -1;
-	public Vector<String>	linksIn			= new Vector<>();
-	public Vector<String>	linksOut		= new Vector<>();
-	public String					server			= null;
-	public URL						url					= null;
-	public String					sUrl				= null;
+	PageState             runState    = PageState.PENDING;
+	public EnumSet<ErrorType> status  = EnumSet.noneOf(ErrorType.class);
+	String                errorString = "";
+	public String         contentType = null;
+	public int            size        = -1;
+	public String         title       = null;
+	public Date           date        = null;
+	public int            level       = -1;
+	public Vector<String> linksIn     = new Vector<>();
+	public Vector<String> linksOut    = new Vector<>();
+	public String         server      = null;
+	public URL            url         = null;
+	public String         sUrl        = null;
 
 	protected DateFormat df = DateFormat.getDateInstance();
 
@@ -53,7 +38,7 @@ public final class PageStats
 			url = new URL(strURL);
 		} catch (MalformedURLException e)
 		{
-			setStatus(URLError);
+			setError(ErrorType.URLError, e.getMessage());
 		}
 	}
 
@@ -101,75 +86,61 @@ public final class PageStats
 		return result;
 	}
 
-	public void setStatus(int status)
-	{
-		this.status |= status;
-	}
-
-	public int getRunState()
+	public PageState getRunState()
 	{
 		return runState;
 	}
 
 	public Color getRunStateColor()
 	{
-		Color result = null;
 		switch (runState)
 		{
 		case PENDING:
-			result = Color.gray;
-			break;
+			return Color.gray;
 		case RUNNING:
-			result = Color.yellow;
-			break;
+			return Color.yellow;
 		case RETRY:
-			result = Color.magenta;
-			break;
+			return Color.magenta;
 		case DONE:
-			switch (status)
-			{
-			case OK:
-				result = Color.green;
-				break;
-			default:
-				result = Color.red;
-				break;
-			}
-			break;
+			return Color.green;
+		case FAILED:
+			return Color.red;
 		default:
 			throw new Error("Invalid runState");
 		}
-		return result;
 	}
 
 	public void setPending()
 	{
-		runState = PENDING;
+		runState = PageState.PENDING;
 	}
 
 	public void setRunning()
 	{
-		runState = RUNNING;
+		runState = PageState.RUNNING;
+	}
+
+	public void setError(ErrorType type, String message)
+	{
+		runState = PageState.FAILED;
+		status.add(type);
+		errorString += message;
 	}
 
 	public void setDone()
 	{
-		runState = DONE;
+		if (runState != PageState.FAILED)
+		runState = PageState.DONE;
 	}
-
+	
 	public void setRetry()
 	{
-		runState = RETRY;
+		runState = PageState.RETRY;
 	}
 
 	public String getErrorString()
 	{
 		return errorString;
-	}
-
-	public void setErrorString(String s)
-	{
-		errorString += s;
 	}
 
 	public void clearErrorString()
@@ -186,8 +157,7 @@ public final class PageStats
 			linksOut.add(u_url.toExternalForm());
 		} catch (MalformedURLException e)
 		{
-			setErrorString("Malformed URL " + u + ", with parent" + url);
-			setStatus(URLError);
+			setError(ErrorType.URLError, "Malformed URL " + u + "(" + e.getMessage() + "), with parent" + url);
 		}
 	}
 
@@ -253,11 +223,6 @@ public final class PageStats
 		return result;
 	}
 
-	public static Comparator<PageStats> getComparator(int columnIndex, int direction)
-	{
-		return new StatsComparator(columnIndex, direction);
-	}
-
 	public static String getColumnName(int columnIndex)
 	{
 		return columnNames[columnIndex];
@@ -270,33 +235,28 @@ public final class PageStats
 
 	public static Class<?> getColumnClass(int columnIndex)
 	{
-		Class<?> result = null;
 		switch (columnIndex)
 		{
 		case 0:
-			result = URL.class;
-			break;
+			return URL.class;
 		case 1:
+			return PageState.class;
 		case 3:
 		case 6:
 		case 7:
 		case 8:
-		case 11:
-			result = Integer.class;
-			break;
+			return Integer.class;
 		case 2:
 		case 4:
 		case 9:
 		case 10:
-			result = String.class;
-			break;
+			return String.class;
 		case 5:
-			result = Date.class;
-			break;
+			return Date.class;
+		case 11:
+			return EnumSet.class;
 		default:
 			throw new Error("Called with invalid Column Number: " + columnIndex);
 		}
-
-		return result;
 	}
 }
