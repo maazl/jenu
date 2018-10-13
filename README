@@ -1,25 +1,29 @@
 Jenu is a Java based URL checker.  It's multi-threaded, and can check
 links pretty quickly.  It has the beginnings of what could be a very
-nice GUI.  
+nice GUI.
+
+This is a fork of Jenu 0.02, ported to Java 8
 
 
 INSTALLATION
 ------------
-Unzip, untar, or un-anything else that works your distrobution.  
+Unzip, untar, or un-anything else that works your distribution.  
 
 (generally 'tar zxf file.tar.gz', or 'tar Ixf file.tar.bz2')
 
 Compile it:
 -----------
-You should be able to run it with the following:
+You should be able to compile it with the following:
 
-javac -classpath .:html-parser.jar *.java
+  ant
+
+Requires ant >= 1.7.
 
 Run it:
 -------
-You need JDK1.3 or later to run it.
+You need Java Runtime Version 8 or later to run it.
 
-java -cp .:html-parser.jar Jenu
+  java -jar jenu.jar
 
 put a URL in the window, such as http://www.<mysite>.com.
 

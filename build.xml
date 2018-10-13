@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project default="create_run_jar" name="Create Runnable Jar for Project jenu">
+	<!--this file was created by Eclipse Runnable JAR Export Wizard-->
+	<!--ANT 1.7 is required                                        -->
+	<!--define folder properties-->
+	<property name="dir.buildfile" value="." />
+	<property name="dir.workspace" value="/home/mueller/workspace" />
+	<property name="dir.jarfile" value="${dir.buildfile}" />
+	<target name="create_run_jar">
+		<jar destfile="${dir.jarfile}/jenu.jar" filesetmanifest="mergewithoutmain">
+			<manifest>
+				<attribute name="Main-Class" value="jenu.ui.Jenu" />
+				<attribute name="Class-Path" value="." />
+			</manifest>
+			<fileset dir="${dir.jarfile}/bin" />
+			<zipfileset excludes="META-INF/*.SF" src="${dir.jarfile}/lib/html-parser.jar" />
+		</jar>
+	</target>
+</project>
