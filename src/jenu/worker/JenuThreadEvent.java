@@ -2,12 +2,12 @@ package jenu.worker;
 
 import java.util.EventObject;
 
-public class JenuThreadEvent
-	extends EventObject
+public class JenuThreadEvent extends EventObject
 {
-	private static final long serialVersionUID = -431303604103842659L;
+	private static final long serialVersionUID = 1L;
 
-	public int m_totalUrlsToCheck,
+	public final int
+		m_totalUrlsToCheck,
 		m_urlsDone,
 		m_maxThreadsRunning,
 		m_threadsRunning,

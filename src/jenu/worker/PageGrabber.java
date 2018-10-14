@@ -35,6 +35,7 @@ class PageGrabber extends Thread
 	public void run()
 	{
 		m_stats.setRunning();
+		m_manager.threadStarted(this);
 		// System.out.println("starting: " + m_url);
 		URL url = m_stats.url;
 		if (url != null)

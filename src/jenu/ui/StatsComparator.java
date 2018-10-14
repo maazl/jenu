@@ -1,7 +1,9 @@
-package jenu.worker;
+package jenu.ui;
 
 import java.util.Comparator;
 import java.util.Iterator;
+
+import jenu.worker.PageStats;
 
 final class StatsComparator implements Comparator<PageStats>
 {
@@ -31,7 +33,7 @@ final class StatsComparator implements Comparator<PageStats>
 				result = s1.url.toExternalForm().compareTo(s2.url.toExternalForm());
 				break;
 			case 1:
-				result = nullComp(s1.runState, s2.runState);
+				result = nullComp(s1.getRunState(), s2.getRunState());
 				break;
 			case 2:
 				result = nullComp(s1.contentType, s2.contentType);
@@ -58,7 +60,7 @@ final class StatsComparator implements Comparator<PageStats>
 				result = nullComp(s1.url.getHost(), s2.url.getHost());
 				break;
 			case 10:
-				result = nullComp(s1.errorString, s2.errorString);
+				result = nullComp(s1.getErrorString(), s2.getErrorString());
 				break;
 			case 11:
 				result = sortedSequenceComp(s1.status, s2.status);

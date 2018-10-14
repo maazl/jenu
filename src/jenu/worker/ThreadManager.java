@@ -3,46 +3,39 @@ package jenu.worker;
 import java.util.Vector;
 import java.util.Set;
 import java.util.HashSet;
-import java.util.Collections;
-import java.util.Comparator;
-import java.awt.Color;
-import javax.swing.table.TableModel;
 
-import jenu.ui.JenuInternalFrame;
+import org.apache.commons.lang3.ArrayUtils;
 
-import javax.swing.event.TableModelListener;
-import javax.swing.event.TableModelEvent;
 
-public class ThreadManager extends Thread implements TableModel
+public final class ThreadManager extends Thread
 {
-	protected String m_base = null;
+	private String m_base = null;
 
 	// Threads keeps getting shoved onto here by PageGrabber
 	// except for the first one, which is shoved on during RUN
-	protected Set<String>				m_urlsAll					= new HashSet<String>();
-	protected Vector<PageStats>	m_statsAll				= new Vector<PageStats>();
-	protected Set<PageStats>		m_statsToStart		= new HashSet<PageStats>();
-	protected Set<PageStats>		m_statsDone				= new HashSet<PageStats>();
-	protected Set<PageStats>		m_statsRunning		= new HashSet<PageStats>();
-	protected Set<PageGrabber>	m_threadsRunning	= new HashSet<PageGrabber>();
-	// protected Vector m_threadPool = new Vector();
+	private Set<String>				m_urlsAll					= new HashSet<String>();
+	private Vector<PageStats>	m_statsAll				= new Vector<PageStats>();
+	private Set<PageStats>		m_statsToStart		= new HashSet<PageStats>();
+	private Set<PageStats>		m_statsDone				= new HashSet<PageStats>();
+	private Set<PageStats>		m_statsRunning		= new HashSet<PageStats>();
+	private Set<PageGrabber>	m_threadsRunning	= new HashSet<PageGrabber>();
+	// private Vector m_threadPool = new Vector();
 
-	// protected Vector m_allThreads = new Vector();
-	protected boolean						m_scheduledStop			= false;
-	protected boolean						m_scheduledPause		= false;
-	protected JenuInternalFrame	m_owner							= null;
-	protected int								m_concurrentThreads	= 10;
+	// private Vector m_allThreads = new Vector();
+	private boolean						m_scheduledStop			= false;
+	private boolean						m_scheduledPause		= false;
+	private int								m_concurrentThreads	= 10;
 
-	protected Vector<JenuThreadListener> m_threadListeners = new Vector<>();
+	private volatile JenuThreadListener[] m_threadListeners = new JenuThreadListener[0];
+	private volatile JenuPageListener[] m_pageListeners = new JenuPageListener[0];
 
-	public ThreadManager(String base_url, JenuInternalFrame owner)
+	public ThreadManager(String base_url)
 	{
 		m_base = base_url;
-		m_owner = owner;
 		addURL(base_url);
 	}
 
-	public String getFile(String url)
+	private static String getFile(String url)
 	{
 		if (url == null)
 			return null;
@@ -73,12 +66,17 @@ public class ThreadManager extends Thread implements TableModel
 				PageStats stats = new PageStats(urlFile);
 				m_statsAll.add(stats);
 				m_statsToStart.add(stats);
+
+				firePageEvent(stats, true);
+				fireThreadEvent();
+				notifyAll();
 			}
-			int row = m_statsAll.size() - 1;
-			fireTableModelListeners(new TableModelEvent(this, row, row, TableModelEvent.ALL_COLUMNS, TableModelEvent.INSERT));
-			fireThreadEvent();
-			notifyAll();
 		}
+	}
+
+	public void threadStarted(PageGrabber page)
+	{
+		firePageEvent(page.getStats(), false);
 	}
 
 	public synchronized void threadFinished(PageGrabber page)
@@ -90,8 +88,7 @@ public class ThreadManager extends Thread implements TableModel
 		m_statsDone.add(stats);
 
 		Vector<String> linksOut = stats.linksOut;
-		int row = m_statsAll.indexOf(stats);
-		fireTableModelListeners(new TableModelEvent(this, row));
+		firePageEvent(stats, false);
 		fireThreadEvent();
 		for (int i = 0; i < linksOut.size(); i++)
 		{
@@ -101,7 +98,7 @@ public class ThreadManager extends Thread implements TableModel
 		notifyAll();
 	}
 
-	public synchronized void waitForThreadToFinish()
+	private synchronized void waitForThreadToFinish()
 	{
 		if (m_threadsRunning.size() > 0)
 		{
@@ -114,7 +111,7 @@ public class ThreadManager extends Thread implements TableModel
 		}
 	}
 
-	public synchronized void waitForThreadToStart()
+	private synchronized void waitForThreadToStart()
 	{
 		if (m_statsToStart.size() == 0)
 		{
@@ -177,7 +174,7 @@ public class ThreadManager extends Thread implements TableModel
 			}
 		}
 		waitForAllThreadsToFinish();
-		m_owner.setStopped();
+
 		fireThreadEvent();
 		System.out.println("Ending...");
 		m_urlsAll = null;
@@ -198,23 +195,9 @@ public class ThreadManager extends Thread implements TableModel
 		m_scheduledPause = pause;
 	}
 
-	public synchronized void sortByColumn(int columnIndex, boolean descending)
-	{
-		if (m_statsAll != null && m_statsAll.size() > 0)
-		{
-			Collections.sort(m_statsAll, new StatsComparator(columnIndex, descending));
-			fireTableModelListeners(new TableModelEvent(this));
-		}
-	}
-
 	public PageState getRowState(int row)
 	{
 		return m_statsAll.get(row).getRunState();
-	}
-
-	public Color getRowStateColor(int row)
-	{
-		return m_statsAll.get(row).getRunStateColor();
 	}
 
 	public void startNextThread()
@@ -224,8 +207,6 @@ public class ThreadManager extends Thread implements TableModel
 		m_statsRunning.add(stats);
 		PageGrabber pg = getPageGrabber(stats);
 		m_threadsRunning.add(pg);
-		int row = m_statsAll.indexOf(stats);
-		fireTableModelListeners(new TableModelEvent(this, row));
 		fireThreadEvent();
 		pg.start();
 	}
@@ -243,89 +224,45 @@ public class ThreadManager extends Thread implements TableModel
 		return result;
 	}
 
-	public void fireTableModelListeners(TableModelEvent event)
-	{
-		Vector<TableModelListener> listeners = new Vector<>(m_tableModelListeners);
-
-		for (TableModelListener l : listeners)
-			l.tableChanged(event);
-	}
-
-	/*
-	 * The tableModel interface. This uses the status of all the threads as the
-	 * table data.
-	 */
-	protected Vector<TableModelListener> m_tableModelListeners = new Vector<>();
-
-	public int getRowCount()
-	{
-		return m_statsAll.size();
-	}
-
-	public int getColumnCount()
-	{
-		return PageStats.getColumnCount();
-	}
-
-	public String getColumnName(int columnIndex)
-	{
-		return PageStats.getColumnName(columnIndex);
-	}
-
-	public Class<?> getColumnClass(int columnIndex)
-	{
-		return PageStats.getColumnClass(columnIndex);
-	}
-
-	public boolean isCellEditable(int rowIndex, int columnIndex)
-	{
-		return false;
-	}
-
-	public synchronized Object getValueAt(int rowIndex, int columnIndex)
-	{
-		return m_statsAll.get(rowIndex).getColumn(columnIndex);
-	}
-
-	public void setValueAt(Object aValue, int rowIndex, int columnIndex)
-	{}
-
-	public void addTableModelListener(TableModelListener l)
-	{
-		m_tableModelListeners.add(l);
-	}
-
-	public void removeTableModelListener(TableModelListener l)
-	{
-		m_tableModelListeners.remove(l);
-	}
-
 	// Methods for JenuThreadListeners
 	public synchronized void addThreadListener(JenuThreadListener l)
 	{
-		if (!m_threadListeners.contains(l))
-		{
-			m_threadListeners.add(l);
-		}
+		m_threadListeners = ArrayUtils.add(m_threadListeners, l);
 	}
 
 	public synchronized void removeThreadListener(JenuThreadListener l)
 	{
-		if (m_threadListeners.contains(l))
-		{
-			m_threadListeners.remove(l);
+		m_threadListeners = ArrayUtils.removeElement(m_threadListeners, l);
+	}
+
+	private void fireThreadEvent()
+	{
+		JenuThreadListener[] l = m_threadListeners;
+		if (l != null)
+		{	JenuThreadEvent e = new JenuThreadEvent(this, m_statsAll.size(), m_statsDone.size(), m_concurrentThreads, m_threadsRunning.size(), m_statsToStart.size());
+			for (JenuThreadListener i : l)
+				i.threadStateChanged(e);
 		}
 	}
 
-	public synchronized void fireThreadEvent()
+	// Methods for JenuPageListeners
+	public synchronized void addPageListener(JenuPageListener l)
 	{
-		JenuThreadEvent e = new JenuThreadEvent(this, m_statsAll.size(), m_statsDone.size(), m_concurrentThreads,
-			m_threadsRunning.size(), m_statsToStart.size());
-		JenuThreadListener l[] = new JenuThreadListener[m_threadListeners.size()];
-		m_threadListeners.copyInto(l);
-		for (int i = 0; i < l.length; i++)
-		{
-			l[i].threadStateChanged(e);
+		m_pageListeners = ArrayUtils.add(m_pageListeners, l);
+	}
+
+	public synchronized void removePageListener(JenuPageListener l)
+	{
+		m_pageListeners = ArrayUtils.removeElement(m_pageListeners, l);
+	}
+
+	private void firePageEvent(PageStats page, boolean isNew)
+	{
+		JenuPageListener[] l = m_pageListeners;
+		if (l != null)
+		{	JenuPageEvent e = new JenuPageEvent(this, page, isNew);
+			for (JenuPageListener i : l)
+				i.pageChanged(e);
 		}
 	}
 

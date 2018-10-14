@@ -14,6 +14,7 @@
 			</manifest>
 			<fileset dir="${dir.jarfile}/bin" />
 			<zipfileset excludes="META-INF/*.SF" src="${dir.jarfile}/lib/html-parser.jar" />
+			<zipfileset excludes="META-INF/*.SF" src="${dir.jarfile}/lib/commons-lang3-3.8.1.jar" />
 		</jar>
 	</target>
 </project>

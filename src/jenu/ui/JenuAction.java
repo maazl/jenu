@@ -27,7 +27,7 @@ abstract class JenuAction extends AbstractAction
 			enabled = true;
 			break;
 		default:
-			throw new Error("Invalid stte sent to JenuAction" + state);
+			throw new Error("Invalid state sent to JenuAction" + state);
 		}
 		return enabled;
 	}
