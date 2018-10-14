@@ -6,7 +6,6 @@ import java.awt.event.ActionEvent;
 /** This class implements several of the actions for each thread. */
 final class ActionPause extends AbstractAction
 {
-	private static final long serialVersionUID = 1L;
 	protected JenuInternalFrame m_parent = null;
 
 	public ActionPause(JenuInternalFrame parent)

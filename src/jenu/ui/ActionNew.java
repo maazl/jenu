@@ -2,7 +2,6 @@ package jenu.ui;
 
 final class ActionNew extends JenuAction
 {
-	private static final long serialVersionUID = 1L;
 	public Jenu owner = null;
 
 	public ActionNew(Jenu owner)

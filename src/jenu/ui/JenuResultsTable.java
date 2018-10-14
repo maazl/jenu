@@ -14,8 +14,6 @@ import jenu.worker.ThreadManager;
 
 final class JenuResultsTable extends JTable
 {
-	private static final long serialVersionUID = 1L;
-
 	public JenuResultsTable(ThreadManager tm)
 	{
 		super(new JenuResultsTableModel(tm));

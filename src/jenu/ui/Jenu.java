@@ -8,7 +8,6 @@ import java.util.Hashtable;
 public final class Jenu extends JFrame
 // implements PropertyChangeListener
 {
-	private static final long serialVersionUID = 1L;
 	public static final int STATE_RUNNING = 0;
 	public static final int STATE_PAUSED = 1;
 	public static final int STATE_STOPPED = 2;

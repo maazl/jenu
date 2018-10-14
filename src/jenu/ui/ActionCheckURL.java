@@ -2,7 +2,6 @@ package jenu.ui;
 
 final class ActionCheckURL extends JenuAction
 {
-	private static final long serialVersionUID = 1L;
 	OpenURLDialog m_dialog = null;
 
 	public ActionCheckURL(Jenu owner)

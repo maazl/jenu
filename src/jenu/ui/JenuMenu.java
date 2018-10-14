@@ -7,7 +7,6 @@ import javax.swing.JCheckBoxMenuItem;
 
 final class JenuMenu extends JMenuBar
 {
-	private static final long serialVersionUID = 1L;
 	Jenu m_owner = null;
 
 	public JenuMenu(Jenu owner)

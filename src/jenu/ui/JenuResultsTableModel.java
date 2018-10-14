@@ -16,8 +16,6 @@ import jenu.worker.ThreadManager;
 /** View model for JenuInternalFrame */
 final class JenuResultsTableModel extends AbstractTableModel
 {
-	private static final long serialVersionUID = 1L;
-
 	private Vector<PageStats> m_statsAll = new Vector<PageStats>();
 
 	private int m_sortColumn = -1;

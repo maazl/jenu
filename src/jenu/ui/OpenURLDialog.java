@@ -8,7 +8,6 @@ import java.net.MalformedURLException;
 
 final class OpenURLDialog extends JDialog implements ActionListener
 {
-	private static final long serialVersionUID = 1L;
 	Frame m_owner = null;
 	JenuSettings m_settings = null;
 	JComboBox<String> m_url = null;
@@ -59,8 +58,6 @@ final class OpenURLDialog extends JDialog implements ActionListener
 		c.add(l);
 		m_url = new JComboBox<String>()
 		{
-			private static final long serialVersionUID = 1L;
-
 			public boolean isEditable()
 			{
 				return true;

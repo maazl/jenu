@@ -7,7 +7,6 @@ import jenu.worker.JenuThreadListener;
 
 final class InternalStatusBar extends JToolBar implements JenuThreadListener
 {
-	private static final long serialVersionUID = 1L;
 	JProgressBar m_threadsRunning, m_urlsDone;
 
 	public InternalStatusBar()
@@ -32,8 +31,6 @@ final class InternalStatusBar extends JToolBar implements JenuThreadListener
 
 	private class InternalProgressBar extends JProgressBar
 	{
-		private static final long serialVersionUID = 1L;
-
 		public InternalProgressBar(int max)
 		{
 			super(0, max);

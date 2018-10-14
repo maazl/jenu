@@ -3,8 +3,6 @@ package jenu.ui;
 final class ActionExit
 	extends JenuAction
 {
-	private static final long serialVersionUID = 1L;
-
 	public ActionExit(Jenu owner)
 	{
 		super("Exit");

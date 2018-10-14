@@ -4,8 +4,6 @@ import javax.swing.*;
 
 class InternalToolBar extends JToolBar
 {
-	private static final long serialVersionUID = 1L;
-
 	protected JenuInternalFrame m_owner;
 
 	JButton m_run, m_stop, m_pause;

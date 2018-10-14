@@ -6,7 +6,6 @@ import java.net.MalformedURLException;
 
 final class JenuSettings extends JComponent
 {
-	private static final long serialVersionUID = 1L;
 	protected URL m_urlToCheck = null;
 	protected boolean m_checkExternalLinks = false;
 	protected int m_parallelThreads = 10;

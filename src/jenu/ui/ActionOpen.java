@@ -2,8 +2,6 @@ package jenu.ui;
 
 final class ActionOpen extends JenuAction
 {
-	private static final long serialVersionUID = 1L;
-
 	public ActionOpen(Jenu owner)
 	{
 		super("Open...");

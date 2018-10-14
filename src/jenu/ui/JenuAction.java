@@ -4,7 +4,6 @@ import javax.swing.AbstractAction;
 
 abstract class JenuAction extends AbstractAction
 {
-	private static final long serialVersionUID = 1L;
 	protected Jenu m_owner = null;
 
 	protected JenuAction(String title)

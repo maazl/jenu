@@ -4,8 +4,6 @@ import java.util.EventObject;
 
 public class JenuPageEvent extends EventObject
 {
-	private static final long serialVersionUID = 1L;
-
 	public final PageStats page;
 	public final boolean isNew;
 

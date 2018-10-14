@@ -4,8 +4,6 @@ import java.util.EventObject;
 
 public class JenuThreadEvent extends EventObject
 {
-	private static final long serialVersionUID = 1L;
-
 	public final int
 		m_totalUrlsToCheck,
 		m_urlsDone,
