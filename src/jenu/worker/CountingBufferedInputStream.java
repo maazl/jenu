@@ -6,7 +6,7 @@ import java.io.IOException;
 
 class CountingBufferedInputStream extends BufferedInputStream
 {
-	protected int bytesRead = 0;
+	protected long bytesRead = 0;
 
 	public CountingBufferedInputStream(InputStream in)
 	{
@@ -44,7 +44,7 @@ class CountingBufferedInputStream extends BufferedInputStream
 		return count;
 	}
 
-	public int getBytesRead()
+	public long getBytesRead()
 	{
 		return bytesRead;
 	}

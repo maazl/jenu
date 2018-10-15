@@ -16,7 +16,7 @@ public final class PageStats
 	public EnumSet<ErrorType> status  = EnumSet.noneOf(ErrorType.class);
 	String                errorString = "";
 	public String         contentType = null;
-	public int            size        = -1;
+	public long           size        = -1;
 	public String         title       = null;
 	public Date           date        = null;
 	public int            level       = -1;
@@ -110,7 +110,7 @@ public final class PageStats
 		if (runState != PageState.FAILED)
 		runState = PageState.DONE;
 	}
-	
+
 	void setRetry()
 	{
 		runState = PageState.RETRY;

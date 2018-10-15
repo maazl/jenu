@@ -39,7 +39,7 @@ final class StatsComparator implements Comparator<PageStats>
 				result = nullComp(s1.contentType, s2.contentType);
 				break;
 			case 3:
-				result = Integer.compare(s1.size, s2.size);
+				result = Long.compare(s1.size, s2.size);
 				break;
 			case 4:
 				result = nullComp(s1.title, s2.title);
@@ -83,7 +83,7 @@ final class StatsComparator implements Comparator<PageStats>
 		else
 			return o1.compareTo(o2);
 	}
-	
+
 	private static <T extends Comparable<T>> int sortedSequenceComp(Iterable<T> s1, Iterable<T> s2)
 	{
 		Iterator<T> i1 = s1.iterator(), i2 = s2.iterator();

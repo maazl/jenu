@@ -122,11 +122,12 @@ final class JenuResultsTableModel extends AbstractTableModel
 			return URL.class;
 		case 1:
 			return PageState.class;
-		case 3:
 		case 6:
 		case 7:
 		case 8:
 			return Integer.class;
+		case 3:
+			return Long.class;
 		case 2:
 		case 4:
 		case 9:

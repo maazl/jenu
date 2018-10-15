@@ -9,9 +9,9 @@ import com.quiotix.html.parser.HtmlParser;
 import com.quiotix.html.parser.HtmlDocument;
 
 //
-// Grabs pages from the internet, parses them, and finds embedded links.
+// Grabs pages from the Internet, parses them, and finds embedded links.
 //
-class PageGrabber extends Thread
+final class PageGrabber extends Thread
 {
 	ThreadManager m_manager = null;
 	PageStats m_stats = null;
@@ -46,7 +46,7 @@ class PageGrabber extends Thread
 				if (connection instanceof HttpURLConnection)
 				{
 					HttpURLConnection httpConnection = (HttpURLConnection)connection;
-					handleHTTPConnection(httpConnection, m_stats);
+					handleHTTPConnection(httpConnection);
 				} else
 				{
 					System.out.println("Unknown URL Connection Type " + url);
@@ -62,54 +62,55 @@ class PageGrabber extends Thread
 		m_manager.threadFinished(this);
 	}
 
-	protected void handleHTTPConnection(HttpURLConnection connection, PageStats stats) throws IOException
+	protected void handleHTTPConnection(HttpURLConnection connection) throws IOException
 	{
 		int responseCode = connection.getResponseCode();
 		if (responseCode != HttpURLConnection.HTTP_OK)
 		{
-			stats.setError(ErrorType.HTTPError, connection.getResponseMessage());
+			m_stats.setError(ErrorType.HTTPError, connection.getResponseMessage());
 		} else
 		{
-			stats.contentType = connection.getContentType();
+			m_stats.contentType = connection.getContentType();
 			long lastModified = connection.getLastModified();
 			if (lastModified > 0)
 			{
-				stats.date = new Date(lastModified);
+				m_stats.date = new Date(lastModified);
 			}
 			CountingBufferedInputStream is = new CountingBufferedInputStream(connection.getInputStream());
-			if (stats.contentType != null)
+			if (m_stats.contentType != null)
 			{
-				if (stats.contentType.equals("text/html"))
+				if (m_stats.contentType.equals("text/html"))
 				{
-					handleHTML(is, stats);
+					handleHTML(is);
 				} else
 				{
 					// handleUnparsedData(is, stats);
 				}
-				// stats.size = is.getBytesRead();
-				stats.size = connection.getContentLength();
+				m_stats.size = connection.getContentLengthLong();
+				if (m_stats.size == -1L)
+					m_stats.size = is.getBytesRead();
 			}
 		}
 		connection.disconnect();
 	}
 
-	protected void handleHTML(CountingBufferedInputStream is, PageStats stats)
+	protected void handleHTML(CountingBufferedInputStream is)
 	{
 		HtmlParser parser = new HtmlParser(is);
 		try
 		{
 			HtmlDocument doc = parser.HtmlDocument();
-			doc.accept(new HtmlLinkGrabber(stats));
+			doc.accept(new HtmlLinkGrabber(m_stats));
 		} catch (com.quiotix.html.parser.ParseException e)
 		{
-			stats.setError(ErrorType.HTMLParseError, e.toString());
+			m_stats.setError(ErrorType.HTMLParseError, e.toString());
 		} catch (com.quiotix.html.parser.TokenMgrError err)
 		{
-			stats.setError(ErrorType.HTMLParseError, err.toString());
+			m_stats.setError(ErrorType.HTMLParseError, err.toString());
 		}
 	}
 
-	protected void handleUnparsedData(CountingBufferedInputStream is, PageStats stats) throws IOException
+	protected void handleUnparsedData(CountingBufferedInputStream is) throws IOException
 	{
 		// REad it, and chew it up.
 		byte buffer[] = new byte[10000];
