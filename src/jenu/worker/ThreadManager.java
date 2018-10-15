@@ -1,7 +1,8 @@
 package jenu.worker;
 
 import java.util.Vector;
-import java.util.Set;
+import java.util.ArrayDeque;
+import java.util.HashMap;
 import java.util.HashSet;
 
 import org.apache.commons.lang3.ArrayUtils;
@@ -13,15 +14,11 @@ public final class ThreadManager extends Thread
 
 	// Threads keeps getting shoved onto here by PageGrabber
 	// except for the first one, which is shoved on during RUN
-	private Set<String>				m_urlsAll					= new HashSet<String>();
-	private Vector<PageStats>	m_statsAll				= new Vector<PageStats>();
-	private Set<PageStats>		m_statsToStart		= new HashSet<PageStats>();
-	private Set<PageStats>		m_statsDone				= new HashSet<PageStats>();
-	private Set<PageStats>		m_statsRunning		= new HashSet<PageStats>();
-	private Set<PageGrabber>	m_threadsRunning	= new HashSet<PageGrabber>();
-	// private Vector m_threadPool = new Vector();
+	private HashMap<String,PageStats>	m_urlsAll			= new HashMap<String,PageStats>();
+	private ArrayDeque<PageStats>	m_statsToStart		= new ArrayDeque<PageStats>();
+	private int										m_statsDone				= 0;
+	private HashSet<PageGrabber>	m_threadsRunning	= new HashSet<PageGrabber>();
 
-	// private Vector m_allThreads = new Vector();
 	private boolean						m_scheduledStop			= false;
 	private boolean						m_scheduledPause		= false;
 	private int								m_concurrentThreads	= 10;
@@ -32,7 +29,7 @@ public final class ThreadManager extends Thread
 	public ThreadManager(String base_url)
 	{
 		m_base = base_url;
-		addURL(base_url);
+		addURL(base_url, null);
 	}
 
 	private static String getFile(String url)
@@ -50,51 +47,43 @@ public final class ThreadManager extends Thread
 		return url;
 	}
 
-	public synchronized void addURL(String url)
+	public synchronized void addURL(String url, String origin)
 	{
 		String urlFile = getFile(url);
 		if (url.startsWith(m_base))
 		{
-			if (m_urlsAll.contains(urlFile))
-			{
-				// System.out.println(url + " is already here");
-				// PageStats s = (PageStats) m_statsAll.get(m_statsAll.indexOf(urlFile));
-				// s.addLinkIn(url);
-			} else
-			{
-				m_urlsAll.add(urlFile);
-				PageStats stats = new PageStats(urlFile);
-				m_statsAll.add(stats);
+			PageStats stats = m_urlsAll.get(urlFile);
+			if (stats == null)
+			{	stats = new PageStats(urlFile);
+				m_urlsAll.put(urlFile, stats);
 				m_statsToStart.add(stats);
-
-				firePageEvent(stats, true);
-				fireThreadEvent();
-				notifyAll();
 			}
+			if (origin != null)
+				stats.addLinkIn(origin);
+
+			firePageEvent(stats, true);
+			notifyAll();
 		}
 	}
 
-	public void threadStarted(PageGrabber page)
+	synchronized void threadStarted(PageGrabber page)
 	{
 		firePageEvent(page.getStats(), false);
 	}
 
-	public synchronized void threadFinished(PageGrabber page)
+	synchronized void threadFinished(PageGrabber page)
 	{
 		m_threadsRunning.remove(page);
 		// m_threadPool.add(page);
 		PageStats stats = page.getStats();
-		m_statsRunning.remove(stats);
-		m_statsDone.add(stats);
+		++m_statsDone;
+		firePageEvent(stats, false);
 
 		Vector<String> linksOut = stats.linksOut;
-		firePageEvent(stats, false);
+		for (String url : linksOut)
+			addURL(url, stats.sUrl);
+
 		fireThreadEvent();
-		for (int i = 0; i < linksOut.size(); i++)
-		{
-			String url = linksOut.get(i);
-			addURL(url);
-		}
 		notifyAll();
 	}
 
@@ -123,7 +112,7 @@ public final class ThreadManager extends Thread
 		}
 	}
 
-	public synchronized void waitForUnPause()
+	private synchronized void waitForUnPause()
 	{
 		while (m_scheduledPause && !m_scheduledStop)
 		{
@@ -135,7 +124,7 @@ public final class ThreadManager extends Thread
 		}
 	}
 
-	public synchronized void waitForAllThreadsToFinish()
+	private synchronized void waitForAllThreadsToFinish()
 	{
 		while (m_threadsRunning.size() > 0)
 		{
@@ -179,8 +168,6 @@ public final class ThreadManager extends Thread
 		System.out.println("Ending...");
 		m_urlsAll = null;
 		m_statsToStart = null;
-		m_statsDone = null;
-		m_statsRunning = null;
 		m_threadsRunning = null;
 		System.gc();
 	}
@@ -195,23 +182,15 @@ public final class ThreadManager extends Thread
 		m_scheduledPause = pause;
 	}
 
-	public PageState getRowState(int row)
+	private synchronized void startNextThread()
 	{
-		return m_statsAll.get(row).getRunState();
-	}
-
-	public void startNextThread()
-	{
-		PageStats stats = m_statsToStart.iterator().next();
-		m_statsToStart.remove(stats);
-		m_statsRunning.add(stats);
+		PageStats stats = m_statsToStart.pop();
 		PageGrabber pg = getPageGrabber(stats);
 		m_threadsRunning.add(pg);
-		fireThreadEvent();
 		pg.start();
 	}
 
-	public PageGrabber getPageGrabber(PageStats stats)
+	private PageGrabber getPageGrabber(PageStats stats)
 	{
 		PageGrabber result = null;
 		// if (m_threadPool.size() > 0) {
@@ -239,7 +218,7 @@ public final class ThreadManager extends Thread
 	{
 		JenuThreadListener[] l = m_threadListeners;
 		if (l != null)
-		{	JenuThreadEvent e = new JenuThreadEvent(this, m_statsAll.size(), m_statsDone.size(), m_concurrentThreads, m_threadsRunning.size(), m_statsToStart.size());
+		{	JenuThreadEvent e = new JenuThreadEvent(this, m_urlsAll.size(), m_statsDone, m_concurrentThreads, m_threadsRunning.size(), m_statsToStart.size());
 			for (JenuThreadListener i : l)
 				i.threadStateChanged(e);
 		}
