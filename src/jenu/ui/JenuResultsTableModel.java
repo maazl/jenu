@@ -82,13 +82,13 @@ final class JenuResultsTableModel extends AbstractTableModel
 		case 2:
 			return row.contentType;
 		case 3:
-			return row.size;
+			return row.size == -1L ? null : row.size;
 		case 4:
 			return row.title;
 		case 5:
 			return row.date;
 		case 6:
-			return row.level;
+			return row.level == -1 ? null : row.level;
 		case 7:
 			return row.linksOut.size();
 		case 8:
