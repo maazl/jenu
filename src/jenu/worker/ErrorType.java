@@ -6,5 +6,6 @@ public enum ErrorType
 	HTMLParseError,
 	InvalidLinks,
 	HTTPError,
-	URLError
+	URLError,
+	InternalError
 }

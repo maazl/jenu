@@ -22,8 +22,8 @@ public final class PageStats
 	public int            level       = -1;
 	public Vector<String> linksOut    = new Vector<>();
 	public String         server      = null;
-	public URL            url         = null;
-	public String         sUrl        = null;
+	public URL            url;
+	public final String   sUrl;
 	public Vector<String> linksIn     = new Vector<>();
 
 	protected DateFormat df = DateFormat.getDateInstance();
@@ -123,8 +123,6 @@ public final class PageStats
 		level       = -1;
 		linksOut.clear();
 		server      = null;
-		url         = null;
-		sUrl        = null;
 	}
 
 	public String getErrorString()

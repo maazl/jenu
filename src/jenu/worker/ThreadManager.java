@@ -8,7 +8,7 @@ import java.util.HashSet;
 import org.apache.commons.lang3.ArrayUtils;
 
 
-public final class ThreadManager extends Thread
+public final class ThreadManager
 {
 	private String m_base = null;
 
@@ -47,7 +47,7 @@ public final class ThreadManager extends Thread
 		return url;
 	}
 
-	public synchronized void addURL(String url, String origin)
+	private synchronized void addURL(String url, String origin)
 	{
 		String urlFile = getFile(url);
 		if (url.startsWith(m_base))
@@ -62,145 +62,91 @@ public final class ThreadManager extends Thread
 				stats.addLinkIn(origin);
 
 			firePageEvent(stats, true);
-			notifyAll();
 		}
 	}
 
-	synchronized void threadStarted(PageGrabber page)
+	/**
+	 * Called by the PageGrabber worker when a task hat finished.
+	 * @param grabber Caller
+	 * @return true: a new task has been scheduled by a call to grabber.reset(),
+	 * false: the thread should die.
+	 */
+	synchronized boolean nextTask(PageGrabber grabber)
 	{
-		firePageEvent(page.getStats(), false);
-	}
+		// Last task has finished
+		{	PageStats stats = grabber.getStats();
+			stats.setDone();
+			++m_statsDone;
+			firePageEvent(stats, false);
 
-	synchronized void threadFinished(PageGrabber page)
-	{
-		m_threadsRunning.remove(page);
-		// m_threadPool.add(page);
-		PageStats stats = page.getStats();
-		++m_statsDone;
-		firePageEvent(stats, false);
-
-		Vector<String> linksOut = stats.linksOut;
-		for (String url : linksOut)
-			addURL(url, stats.sUrl);
-
+			Vector<String> linksOut = stats.linksOut;
+			for (String url : linksOut)
+				addURL(url, stats.sUrl);
+		}
+		// schedule new task?
+		if (m_scheduledPause || m_scheduledStop || m_statsToStart.size() == 0)
+		{	// no more work for now, thread will die.
+			m_threadsRunning.remove(grabber);
+			fireThreadEvent();
+			return false;
+		}
+		do
+		{	scheduleTask(grabber);
+			// start further threads?
+			grabber = startNextThread();
+		} while (grabber != null);
 		fireThreadEvent();
-		notifyAll();
+		return true;
 	}
 
-	private synchronized void waitForThreadToFinish()
+	public void start()
 	{
-		if (m_threadsRunning.size() > 0)
-		{
-			try
-			{
-				// System.out.print("Wait: " + m_threadsRunning.size());
-				wait();
-			} catch (InterruptedException e)
-			{}
-		}
-	}
-
-	private synchronized void waitForThreadToStart()
-	{
-		if (m_statsToStart.size() == 0)
-		{
-			try
-			{
-				wait();
-			} catch (InterruptedException e)
-			{}
-		}
-	}
-
-	private synchronized void waitForUnPause()
-	{
-		while (m_scheduledPause && !m_scheduledStop)
-		{
-			try
-			{
-				wait();
-			} catch (InterruptedException e)
-			{}
-		}
-	}
-
-	private synchronized void waitForAllThreadsToFinish()
-	{
-		while (m_threadsRunning.size() > 0)
-		{
-			try
-			{
-				wait();
-			} catch (InterruptedException e)
-			{}
-		}
-	}
-
-	public void run()
-	{
-		// Go until there are no threads on m_threadsToStart or m_threadsRunning.
-		System.out.println("Starting...");
+		PageGrabber grabber;
+		while ((grabber = startNextThread()) != null)
+			scheduleTask(grabber);
 		fireThreadEvent();
-		while (!m_scheduledStop && (m_statsToStart.size() > 0 || m_threadsRunning.size() > 0))
-		{
-			waitForUnPause();
-			if (m_threadsRunning.size() > m_concurrentThreads)
-			{
-				System.out.println("Error:  started too many threads.");
-			}
-			while (m_threadsRunning.size() >= m_concurrentThreads)
-			{
-				waitForThreadToFinish();
-			}
-			if (m_statsToStart.size() > 0 && m_threadsRunning.size() < m_concurrentThreads)
-			{
-				// start one of the threads.
-				startNextThread();
-			}
-			if (m_statsToStart.size() == 0)
-			{
-				waitForThreadToStart();
-			}
-		}
-		waitForAllThreadsToFinish();
+	}
 
-		fireThreadEvent();
-		System.out.println("Ending...");
-		m_urlsAll = null;
-		m_statsToStart = null;
-		m_threadsRunning = null;
-		System.gc();
+	public synchronized boolean isAlive()
+	{
+		return m_threadsRunning.size() != 0;
 	}
 
 	public synchronized void stopRunning()
 	{
 		m_scheduledStop = true;
+		m_statsToStart.clear();
+		fireThreadEvent();
 	}
 
 	public synchronized void pauseRunning(boolean pause)
 	{
 		m_scheduledPause = pause;
+		if (!pause)
+			start();
 	}
 
-	private synchronized void startNextThread()
+	/**
+	 * Try to start new thread.
+	 * @return new Thread or null if a new thread is currently not required or not wanted.
+	 * You need to schedule a task to the new thread if you got one.
+	 */
+	private PageGrabber startNextThread()
+	{
+		if (m_threadsRunning.size() >= m_concurrentThreads || m_statsToStart.size() == 0)
+			return null;
+		PageGrabber grabber = new PageGrabber(this);
+		m_threadsRunning.add(grabber);
+		grabber.start();
+		return grabber;
+	}
+
+	private void scheduleTask(PageGrabber grabber)
 	{
 		PageStats stats = m_statsToStart.pop();
-		PageGrabber pg = getPageGrabber(stats);
-		m_threadsRunning.add(pg);
-		pg.start();
-	}
-
-	private PageGrabber getPageGrabber(PageStats stats)
-	{
-		PageGrabber result = null;
-		// if (m_threadPool.size() > 0) {
-		// result = (PageGrabber) m_threadPool.get(0);
-		// m_threadPool.remove(0);
-		// } else {
-		result = new PageGrabber(this);
-		// }
-		result.reset(stats);
-		return result;
+		grabber.reset(stats);
+		stats.setRunning();
+		firePageEvent(stats, false);
 	}
 
 	// Methods for JenuThreadListeners
