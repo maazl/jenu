@@ -38,9 +38,9 @@ class InternalToolBar extends JToolBar
 
 	public void setPaused()
 	{
-		m_run.setEnabled(false);
+		m_run.setEnabled(true);
 		m_stop.setEnabled(true);
-		m_pause.setEnabled(true);
+		m_pause.setEnabled(false);
 		m_textField.setEnabled(false);
 	}
 

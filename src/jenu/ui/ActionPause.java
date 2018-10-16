@@ -16,6 +16,6 @@ final class ActionPause extends AbstractAction
 
 	public void actionPerformed(ActionEvent e)
 	{
-		m_parent.pauseRunning(true);
+		m_parent.pauseRunning();
 	}
 }
