@@ -8,6 +8,7 @@ import javax.swing.JScrollPane;
 import jenu.worker.JenuThreadEvent;
 import jenu.worker.JenuThreadListener;
 import jenu.worker.ThreadManager;
+import jenu.worker.WorkingSet;
 
 public final class JenuInternalFrame extends JInternalFrame implements JenuThreadListener
 {
@@ -48,14 +49,24 @@ public final class JenuInternalFrame extends JInternalFrame implements JenuThrea
 		if (m_tm != null && m_tm.isAlive())
 			m_tm.pauseRunning(false);
 		else
-		{	m_tm = new ThreadManager(m_toolBar.getURL());
-			m_tm.addThreadListener(m_statusBar);
-			m_tm.addThreadListener(this);
+		{	m_tm = new ThreadManager();
 			m_table = new JenuResultsTable(m_tm);
 			m_scroll.setViewportView(m_table);
-			m_tm.start();
+
+			m_tm.addThreadListener(m_statusBar);
+			m_tm.addThreadListener(this);
+
+			WorkingSet ws = new WorkingSet();
+			String url = m_toolBar.getSite();
+			if (url.length() != 0)
+				ws.Sites.add(url);
+			url = m_toolBar.getURL();
+			if (url.length() != 0)
+				ws.StartingPoints.add(url);
+
+			m_toolBar.setRunning();
+			m_tm.start(ws);
 		}
-		m_toolBar.setRunning();
 	}
 
 	public void threadStateChanged(JenuThreadEvent e)
@@ -68,14 +79,18 @@ public final class JenuInternalFrame extends JInternalFrame implements JenuThrea
 
 	public void stopRunning()
 	{
-		m_toolBar.setStopping();
-		m_tm.stopRunning();
+		if (m_tm != null)
+		{	m_toolBar.setStopping();
+			m_tm.stopRunning();
+		}
 	}
 
 	public void pauseRunning()
 	{
-		m_toolBar.setPaused();
-		m_tm.pauseRunning(true);
+		if (m_tm != null)
+		{	m_toolBar.setPaused();
+			m_tm.pauseRunning(true);
+		}
 	}
 
 	private class URLDisplay extends JScrollPane

@@ -1,8 +1,10 @@
 package jenu.worker;
 
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.Vector;
 import java.text.DateFormat;
 import java.net.MalformedURLException;
@@ -12,19 +14,20 @@ import java.net.MalformedURLException;
  */
 public final class PageStats
 {
-	PageState             runState    = PageState.PENDING;
-	public EnumSet<ErrorType> status  = EnumSet.noneOf(ErrorType.class);
-	String                errorString = "";
-	public String         contentType = null;
-	public long           size        = -1;
-	public String         title       = null;
-	public Date           date        = null;
-	public int            level       = -1;
-	public Vector<String> linksOut    = new Vector<>();
-	public String         server      = null;
-	public URL            url;
-	public final String   sUrl;
-	public Vector<String> linksIn     = new Vector<>();
+	PageState              runState    = PageState.PENDING;
+	public EnumSet<ErrorType> status   = EnumSet.noneOf(ErrorType.class);
+	String                 errorString = "";
+	public String          contentType = null;
+	public long            size        = -1;
+	public String          title       = null;
+	public Date            date        = null;
+	public int             level       = -1;
+	public ArrayList<Link> linksOut    = new ArrayList<>();
+	public String          server      = null;
+	public HashSet<String> anchors     = new HashSet<>();
+	public URL             url;
+	public final String    sUrl;
+	public Vector<Link>    linksIn     = new Vector<>();
 
 	protected DateFormat df = DateFormat.getDateInstance();
 
@@ -60,9 +63,9 @@ public final class PageStats
 		return result;
 	}
 
-	void addLinkIn(String u)
+	void addLinkIn(Link l)
 	{
-		linksIn.add(u);
+		linksIn.add(l);
 	}
 
 	public boolean equals(Object o)
@@ -102,7 +105,7 @@ public final class PageStats
 	{
 		runState = PageState.FAILED;
 		status.add(type);
-		errorString += message;
+		errorString += '\n' + message;
 	}
 
 	void setDone()
@@ -130,17 +133,14 @@ public final class PageStats
 		return errorString;
 	}
 
-	void addLinkOut(String u)
+	void addLinkOut(Link l)
 	{
-		// System.out.println(u);
-		try
-		{
-			URL u_url = new URL(url, u);
-			linksOut.add(u_url.toExternalForm());
-		} catch (MalformedURLException e)
-		{
-			setError(ErrorType.URLError, "Malformed URL " + u + "(" + e.getMessage() + "), with parent" + url);
-		}
+		linksOut.add(l);
+	}
+
+	void addAnchor(String name)
+	{
+		anchors.add(name);
 	}
 
 	void setTime(String time)

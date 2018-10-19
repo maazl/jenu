@@ -30,7 +30,7 @@ final class StatsComparator implements Comparator<PageStats>
 			switch (m_column)
 			{
 			case 0:
-				result = s1.url.toExternalForm().compareTo(s2.url.toExternalForm());
+				result = s1.sUrl.compareTo(s2.sUrl);
 				break;
 			case 1:
 				result = nullComp(s1.getRunState(), s2.getRunState());

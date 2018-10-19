@@ -76,7 +76,7 @@ final class JenuResultsTableModel extends AbstractTableModel
 		switch (columnIndex)
 		{
 		case 0:
-			return row.url;
+			return row.sUrl;
 		case 1:
 			return row.getRunState();
 		case 2:
@@ -94,7 +94,7 @@ final class JenuResultsTableModel extends AbstractTableModel
 		case 8:
 			return row.linksIn.size();
 		case 9:
-			return row.url.getHost();
+			return row.url != null ? row.url.getHost() : null;
 		case 10:
 			return row.getErrorString();
 		case 11:

@@ -4,9 +4,10 @@ import java.io.BufferedInputStream;
 import java.io.InputStream;
 import java.io.IOException;
 
-class CountingBufferedInputStream extends BufferedInputStream
+final class CountingBufferedInputStream extends BufferedInputStream
 {
-	protected long bytesRead = 0;
+	private long bytesRead = 0;
+	private int line = 1;
 
 	public CountingBufferedInputStream(InputStream in)
 	{
@@ -22,8 +23,9 @@ class CountingBufferedInputStream extends BufferedInputStream
 	{
 		int c = super.read();
 		if (c != -1)
-		{
-			bytesRead++;
+		{	++bytesRead;
+			if (c == '\n')
+				++line;
 		}
 		return c;
 	}
@@ -32,7 +34,11 @@ class CountingBufferedInputStream extends BufferedInputStream
 	{
 		int count = super.read(b, off, len);
 		if (count != -1)
-			bytesRead += count;
+		{	bytesRead += count;
+			for (int i = off; i < off + len; ++i)
+				if (b[i] == '\n')
+					++line;
+		}
 		return count;
 	}
 
@@ -40,12 +46,19 @@ class CountingBufferedInputStream extends BufferedInputStream
 	{
 		int count = super.read(b);
 		if (count != -1)
-			bytesRead += count;
+		{	bytesRead += count;
+			for (int i = 0; i < b.length; ++i)
+				if (b[i] == '\n')
+					++line;
+		}
 		return count;
 	}
 
 	public long getBytesRead()
-	{
-		return bytesRead;
+	{	return bytesRead;
+	}
+
+	public int getLine()
+	{	return line;
 	}
 }

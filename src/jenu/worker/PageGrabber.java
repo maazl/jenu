@@ -6,6 +6,7 @@ import java.net.URLConnection;
 import java.io.*;
 import java.util.*;
 import com.quiotix.html.parser.HtmlParser;
+import com.quiotix.html.parser.HtmlVisitor;
 import com.quiotix.html.parser.HtmlDocument;
 
 /**
@@ -13,8 +14,9 @@ import com.quiotix.html.parser.HtmlDocument;
  */
 final class PageGrabber extends Thread
 {
-	ThreadManager m_manager = null;
-	PageStats m_stats = null;
+	private ThreadManager m_manager = null;
+	private PageStats m_stats = null;
+	private CountingBufferedInputStream m_input;
 
 	public PageGrabber(ThreadManager manager)
 	{
@@ -35,11 +37,12 @@ final class PageGrabber extends Thread
 	public void run()
 	{
 		do
-		{	// System.out.println("starting: " + m_url);
-			URL url = m_stats.url;
+		{	URL url = m_stats.url;
 			try
 			{
 				URLConnection connection = url.openConnection();
+				connection.setConnectTimeout(20000);
+				connection.setReadTimeout(10000);
 				connection.connect();
 				if (connection instanceof HttpURLConnection)
 					handleHTTPConnection((HttpURLConnection)connection);
@@ -50,7 +53,6 @@ final class PageGrabber extends Thread
 			} catch (Throwable ex)
 			{	m_stats.setError(ErrorType.InternalError, "Unhandeled Error during processing" + ex.toString());
 			}
-			// System.out.println("finished: " + url);
 		} while (m_manager.nextTask(this));
 	}
 
@@ -71,7 +73,7 @@ final class PageGrabber extends Thread
 			m_stats.date = new Date(lastModified);
 		try (CountingBufferedInputStream is = new CountingBufferedInputStream(connection.getInputStream()))
 		{	if (m_stats.contentType != null)
-			{
+			{	m_input = is;
 				if (m_stats.contentType.equals("text/html"))
 					handleHTML(is);
 				else
@@ -90,7 +92,7 @@ final class PageGrabber extends Thread
 		try
 		{
 			HtmlDocument doc = parser.HtmlDocument();
-			doc.accept(new HtmlLinkGrabber(m_stats));
+			doc.accept(new HtmlLinkGrabber());
 		} catch (com.quiotix.html.parser.ParseException e)
 		{
 			m_stats.setError(ErrorType.HTMLParseError, e.toString());
@@ -111,5 +113,74 @@ final class PageGrabber extends Thread
 	public String toString()
 	{
 		return m_stats.toString();
+	}
+
+
+	final class HtmlLinkGrabber extends HtmlVisitor
+	{
+		public void finish()
+		{}
+
+		public void visit(HtmlDocument.Tag t)
+		{
+			String value = null;
+			String typeX = "";
+			if (t.tagName.equalsIgnoreCase("a"))
+			{	value = attributesGet(t.attributeList, "name");
+				if (value != null)
+					m_stats.addAnchor(value);
+				value = attributesGet(t.attributeList, "href");
+			} else if (t.tagName.equalsIgnoreCase("img"))
+				value = attributesGet(t.attributeList, "src");
+			else if (t.tagName.equalsIgnoreCase("link"))
+			{	value = attributesGet(t.attributeList, "type");
+				if ("text/css".equals(value))
+					typeX = ".css";
+				value = attributesGet(t.attributeList, "href");
+			} else
+				return;
+
+			if (value != null && value.length() != 0)
+			{	Link link = new Link(t.tagName.toLowerCase() + typeX, value, m_stats.url, m_input.getLine());
+				m_stats.addLinkOut(link);
+			}
+		}
+
+		private String attributesGet(
+			HtmlDocument.AttributeList attributes,
+			String name)
+		{
+			@SuppressWarnings("unchecked")
+			Vector<HtmlDocument.Attribute> attrs = attributes.attributes;
+			for (HtmlDocument.Attribute attribute : attrs)
+			{
+				if (attribute.name.equalsIgnoreCase(name))
+				{
+					String value = attribute.value;
+					int firstQuote = value.indexOf("\"");
+					int lastQuote = value.lastIndexOf("\"");
+					firstQuote = (firstQuote == -1) ? 0 : firstQuote;
+					lastQuote = (lastQuote == -1) ? value.length() - 1 : lastQuote;
+					String v = value.substring(firstQuote + 1, lastQuote);
+					return v;
+				}
+			}
+			return null;
+		}
+
+		public void visit(HtmlDocument.EndTag t)
+		{}
+
+		public void visit(HtmlDocument.Comment c)
+		{}
+
+		public void visit(HtmlDocument.Text t)
+		{}
+
+		public void visit(HtmlDocument.Newline n)
+		{}
+
+		public void visit(HtmlDocument.Annotation a)
+		{}
 	}
 }
