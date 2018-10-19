@@ -19,6 +19,7 @@ public final class PageStats
 	String                 errorString = "";
 	public String          contentType = null;
 	public long            size        = -1;
+	public int             lines       = -1;
 	public String          title       = null;
 	public Date            date        = null;
 	public int             level       = -1;

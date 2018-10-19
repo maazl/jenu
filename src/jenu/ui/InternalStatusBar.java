@@ -13,9 +13,9 @@ final class InternalStatusBar extends JToolBar implements JenuThreadListener
 	{
 		m_threadsRunning = new InternalProgressBar(0);
 		m_urlsDone = new InternalProgressBar(0);
-		add(new JLabel("Threads Running"));
+		add(new JLabel("Threads running"));
 		add(m_threadsRunning);
-		add(new JLabel("Total URLS"));
+		add(new JLabel("Total URLs"));
 		add(m_urlsDone);
 		setFloatable(false);
 	}

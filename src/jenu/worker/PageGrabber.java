@@ -82,6 +82,7 @@ final class PageGrabber extends Thread
 				m_stats.size = connection.getContentLengthLong();
 				if (m_stats.size == -1L)
 					m_stats.size = is.getBytesRead();
+				m_stats.lines = is.getLine();
 			}
 		}
 	}
