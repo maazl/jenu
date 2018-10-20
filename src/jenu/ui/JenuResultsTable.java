@@ -24,25 +24,6 @@ final class JenuResultsTable extends JTable
 		setShowGrid(false);
 	}
 
-	// public void tableChanged(TableModelEvent e) {
-	//
-	// int firstRow = e.getFirstRow();
-	// int lastRow = e.getLastRow();
-	// int cols = getColumnCount();
-	// if (firstRow >= 0 || lastRow >= 0) {
-	// ThreadManager tm = (ThreadManager) dataModel;
-	// for (int row = firstRow; row <= lastRow; row++) {
-	// Color c = tm.getRowStateColor(row);
-	// for (int col = 0; col < cols; col++) {
-	// DefaultTableCellRenderer r = (DefaultTableCellRenderer) getCellRenderer(row,
-	// col);
-	// r.setForeground(c);
-	// }
-	// }
-	// }
-	// super.tableChanged(e);
-	// }
-
 	protected Hashtable<Class<?>, Hashtable<Color,DefaultTableCellRenderer>> m_renderersByClass = new Hashtable<>();
 
 	public TableCellRenderer getCellRenderer(int row, int column)
@@ -60,7 +41,6 @@ final class JenuResultsTable extends JTable
 		if (!renderersByColor.contains(color))
 		{
 			DefaultTableCellRenderer r = new DefaultTableCellRenderer(); // (DefaultTableCellRenderer)
-																																		// getDefaultRenderer(c).clone();
 			r.setForeground(color);
 			renderersByColor.put(color, r);
 		}
@@ -70,18 +50,17 @@ final class JenuResultsTable extends JTable
 	private static Color getRunStateColor(PageState runState)
 	{
 		switch (runState)
-		{
-		case PENDING:
+		{case PENDING:
 			return Color.gray;
-		case RUNNING:
+		 case RUNNING:
 			return Color.yellow;
-		case RETRY:
+		 case RETRY:
 			return Color.magenta;
-		case DONE:
+		 case DONE:
 			return Color.green;
-		case FAILED:
+		 case FAILED:
 			return Color.red;
-		default:
+		 default:
 			throw new Error("Invalid runState");
 		}
 	}

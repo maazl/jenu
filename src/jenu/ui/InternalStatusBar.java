@@ -29,7 +29,7 @@ final class InternalStatusBar extends JToolBar implements JenuThreadListener
 		m_urlsDone.setValue(e.m_urlsDone);
 	}
 
-	private class InternalProgressBar extends JProgressBar
+	private static class InternalProgressBar extends JProgressBar
 	{
 		public InternalProgressBar(int max)
 		{

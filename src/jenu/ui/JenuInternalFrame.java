@@ -10,7 +10,7 @@ import jenu.worker.JenuThreadListener;
 import jenu.worker.ThreadManager;
 import jenu.worker.WorkingSet;
 
-public final class JenuInternalFrame extends JInternalFrame implements JenuThreadListener
+final class JenuInternalFrame extends JInternalFrame implements JenuThreadListener
 {
 	static int openFrameCount = 0;
 	static final int xOffset = 30, yOffset = 30;
@@ -93,7 +93,7 @@ public final class JenuInternalFrame extends JInternalFrame implements JenuThrea
 		}
 	}
 
-	private class URLDisplay extends JScrollPane
+	private static class URLDisplay extends JScrollPane
 	{
 		public URLDisplay()
 		{

@@ -14,9 +14,9 @@ import java.net.MalformedURLException;
  */
 public final class PageStats
 {
-	PageState              runState    = PageState.PENDING;
+	private PageState      runState    = PageState.PENDING;
 	public EnumSet<ErrorType> status   = EnumSet.noneOf(ErrorType.class);
-	String                 errorString = "";
+	private String         errorString = "";
 	public String          contentType = null;
 	public long            size        = -1;
 	public int             lines       = -1;
@@ -32,7 +32,7 @@ public final class PageStats
 
 	protected DateFormat df = DateFormat.getDateInstance();
 
-	public PageStats(String strURL)
+	PageStats(String strURL)
 	{
 		if (strURL == null)
 		{
@@ -142,14 +142,5 @@ public final class PageStats
 	void addAnchor(String name)
 	{
 		anchors.add(name);
-	}
-
-	void setTime(String time)
-	{
-		try
-		{
-			date = df.parse(time);
-		} catch (java.text.ParseException e)
-		{}
 	}
 }
