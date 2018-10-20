@@ -119,11 +119,14 @@ final class PageGrabber extends Thread
 
 	final class HtmlLinkGrabber extends HtmlVisitor
 	{
+		boolean atTitle = false;
+
 		public void finish()
 		{}
 
 		public void visit(HtmlDocument.Tag t)
 		{
+			atTitle = false;
 			String value = null;
 			String typeX = "";
 			if (t.tagName.equalsIgnoreCase("a"))
@@ -139,8 +142,11 @@ final class PageGrabber extends Thread
 					typeX = ".css";
 				value = attributesGet(t.attributeList, "href");
 			} else
+			{	if (t.tagName.equalsIgnoreCase("title"))
+					atTitle = true;
 				return;
-
+			}
+			// Handle links
 			if (value != null && value.length() != 0)
 			{	Link link = new Link(t.tagName.toLowerCase() + typeX, value, m_stats.url, m_input.getLine());
 				m_stats.addLinkOut(link);
@@ -170,13 +176,17 @@ final class PageGrabber extends Thread
 		}
 
 		public void visit(HtmlDocument.EndTag t)
-		{}
+		{	atTitle = false;
+		}
 
 		public void visit(HtmlDocument.Comment c)
 		{}
 
 		public void visit(HtmlDocument.Text t)
-		{}
+		{
+			if (atTitle)
+				m_stats.title = t.text;
+		}
 
 		public void visit(HtmlDocument.Newline n)
 		{}

@@ -13,16 +13,13 @@ import org.apache.commons.lang3.ArrayUtils;
 
 public final class ThreadManager
 {
-
-	public int concurrentThreads	= 10;
+	public int concurrentThreads = 10;
 
 	/** Current WorkingSet to be executed. */
 	private WorkingSet Cfg;
 	private boolean    scheduledStop = true;
 	private boolean    scheduledPause;
 
-	// Threads keeps getting shoved onto here by PageGrabber
-	// except for the first one, which is shoved on during RUN
 	private HashMap<String, PageStats> urlsAll        = new HashMap<String, PageStats>();
 	private ArrayDeque<PageStats>      statsToStart   = new ArrayDeque<PageStats>();
 	private int                        statsDone      = 0;
@@ -74,7 +71,7 @@ public final class ThreadManager
 
 		// schedule starting points
 		for (String sp : Cfg.StartingPoints)
-			addLink(new Link(null, sp, rootURL, 0));
+			addLink(new Link(null, sp, rootURL, 0), 0);
 
 		// and nor go parallel ...
 		startThreads();
@@ -121,23 +118,39 @@ public final class ThreadManager
 			{ }
 	}
 
-	private void addLink(Link link)
+	private void addLink(Link link, int level)
 	{
-		String urlFile = getFile(makeAbsolute(link.Source, link.Target));
-		if (Cfg.CheckExternalURLs || isInternalUrl(urlFile))
+		if (Cfg.CheckExternalURLs || isInternalUrl(link.Target))
 		{
-			PageStats stats = urlsAll.get(urlFile);
+			PageStats stats = urlsAll.get(link.Target);
 			boolean isNew = stats == null;
 			if (isNew)
-			{	stats = new PageStats(urlFile);
-				urlsAll.put(urlFile, stats);
+			{	stats = new PageStats(link.Target);
+				urlsAll.put(link.Target, stats);
 				statsToStart.add(stats);
 			}
+
 			if (link.Type != null)
 				stats.addLinkIn(link);
 
+			applyLevelRecursive(stats, level);
+
 			firePageEvent(stats, isNew);
 		}
+	}
+
+	private boolean applyLevelRecursive(PageStats stats, int level)
+	{	++level;
+		if (!stats.setLevel(level))
+			return false;
+		// level lowered, i.e. found a shorter path => apply recursively
+		for (Link l : stats.linksOut)
+		{	PageStats stats2 = urlsAll.get(l.Target);
+			if (stats2 != null)
+				if (applyLevelRecursive(stats2, level))
+					firePageEvent(stats2, false);
+		}
+		return true;
 	}
 
 	/** Checks whether an URL belong to the current list of sites.
@@ -148,15 +161,6 @@ public final class ThreadManager
 		if (p >= 0)
 			return true; // exact hit
 		return p != -1 && url.startsWith(Cfg.Sites.get(-2 - p));
-	}
-
-	/** Retrieve URL part excluding anchors */
-	private static String getFile(String url)
-	{
-		int i = url.indexOf("#");
-		if (i >= 0)
-			return url.substring(0, i);
-		return url;
 	}
 
 	/** Retrieve path component of URL */
@@ -175,22 +179,6 @@ public final class ThreadManager
 			break;
 		}
 		return lastSlash >= 0 ? url.substring(0, lastSlash + 1) : url;
-	}
-
-	/** make absolute URL. Similar to @see URL::new, but no Exception.
-	 * In doubt return the unchanged URL.
-	 * @param context parent URL
-	 * @param url relative or absolute URL
-	 * @return absolute URL or context in case of an error.
-	 */
-	private static String makeAbsolute(URL context, String url)
-	{
-		if (context != null)
-			try
-			{	url = new URL(context, url).toExternalForm();
-			} catch (MalformedURLException e)
-			{ } // We can safely ignore this error here because it gets repeated by the PageGrabber.
-		return url;
 	}
 
 	/** Initially start threads until the limit is reached.
@@ -217,7 +205,7 @@ public final class ThreadManager
 
 			if (isInternalUrl(stats.sUrl))
 				for (Link link : stats.linksOut)
-					addLink(link);
+					addLink(link, stats.level);
 		}
 		// schedule new task?
 		if (scheduledPause || scheduledStop || statsToStart.size() == 0)

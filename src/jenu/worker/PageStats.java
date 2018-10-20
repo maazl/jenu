@@ -143,4 +143,12 @@ public final class PageStats
 	{
 		anchors.add(name);
 	}
+
+	boolean setLevel(int depth)
+	{
+		if (level != -1 && level <= depth)
+			return false;
+		level = depth;
+		return true;
+	}
 }
