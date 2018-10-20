@@ -62,7 +62,7 @@ final class JenuResultsTable extends JTable
 		{case PENDING:
 			return Color.gray;
 		 case RUNNING:
-			return Color.yellow;
+			return Color.orange;
 		 case RETRY:
 			return Color.magenta;
 		 case DONE:
