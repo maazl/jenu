@@ -94,6 +94,7 @@ final class JenuResultsTable extends JTable
 	{
 		private Vector<PageStats> m_statsAll = new Vector<PageStats>();
 
+		// TODO: retain sort order on changes
 		private int m_sortColumn = -1;
 		private boolean m_sortDescending = false;
 
@@ -161,29 +162,39 @@ final class JenuResultsTable extends JTable
 			 case RunState:
 				return row.getRunState();
 			 case Status:
-				return row.status.isEmpty() ? null : row.status;
+				return row.getStatus().isEmpty() ? null : row.getStatus();
 			 case Error:
 				return row.getErrorString();
 			 case Links_out:
-				return row.linksOut.size() != 0 ? row.linksOut.size() : null;
+				{	int ret = row.getLinksOut().size();
+					return ret != 0 ? ret : null;
+				}
 			 case Links_in:
-				return row.linksIn.size();
+				return row.getLinksIn().size();
 			 case Server:
 				return row.url != null ? row.url.getHost() : null;
 			 case Type:
-				return row.contentType;
+				return row.getContentType();
 			 case Size:
-				return row.size == -1L ? null : row.size;
+				{	long ret = row.getSize();
+					return ret == -1L ? null : ret;
+				}
 			 case Lines:
-				return row.lines <= 0 ? null : row.lines;
+				{	long ret = row.getLines();
+					return ret <= 0 ? null : ret;
+				}
 			 case Title:
-				return row.title;
+				return row.getTitle();
 			 case Date:
-				return row.date;
+				return row.getDate();
 			 case Level:
-				return row.level == -1 ? null : row.level;
+				{	int ret = row.getLevel();
+					return ret == Integer.MAX_VALUE ? null : ret;
+				}
 			 case Seconds:
-				return row.duration <= 0 ? null : row.duration / 1000.;
+				{	long millis = row.getDuration();
+					return millis < 0 ? null : millis / 1000.F;
+				}
 			}
 			return null; // Keep compiler happy
 		}
@@ -232,29 +243,29 @@ final class JenuResultsTable extends JTable
 				 case RunState:
 					comp = (s1, s2) -> dir * nullComp(s1.getRunState(), s2.getRunState()); break;
 				 case Status:
-					comp = (s1, s2) -> dir * sortedSequenceComp(s1.status, s2.status); break;
+					comp = (s1, s2) -> dir * sortedSequenceComp(s1.getStatus(), s2.getStatus()); break;
 				 case Error:
 					comp = (s1, s2) -> dir * nullComp(s1.getErrorString(), s2.getErrorString()); break;
 				 case Links_out:
-					comp = (s1, s2) -> dir * Integer.compare(s1.linksOut.size(), s2.linksOut.size()); break;
+					comp = (s1, s2) -> dir * Integer.compare(s1.getLinksOut().size(), s2.getLinksOut().size()); break;
 				 case Links_in:
-					comp = (s1, s2) -> dir * Integer.compare(s1.linksIn.size(), s2.linksIn.size()); break;
+					comp = (s1, s2) -> dir * Integer.compare(s1.getLinksIn().size(), s2.getLinksIn().size()); break;
 				 case Server:
 					comp = (s1, s2) -> dir * nullComp(s1.url != null ? s1.url.getHost() : null, s2.url != null ? s2.url.getHost() : null); break;
 				 case Type:
-					comp = (s1, s2) -> dir * nullComp(s1.contentType, s2.contentType); break;
+					comp = (s1, s2) -> dir * nullComp(s1.getContentType(), s2.getContentType()); break;
 				 case Size:
 					comp = (s1, s2) -> dir * nullComp(s1.getErrorString(), s2.getErrorString()); break;
 				 case Lines:
-					comp = (s1, s2) -> dir * Long.compare(s1.size, s2.size); break;
+					comp = (s1, s2) -> dir * Long.compare(s1.getSize(), s2.getSize()); break;
 				 case Title:
-					comp = (s1, s2) -> dir * nullComp(s1.title, s2.title); break;
+					comp = (s1, s2) -> dir * nullComp(s1.getTitle(), s2.getTitle()); break;
 				 case Date:
-					comp = (s1, s2) -> dir * nullComp(s1.date, s2.date); break;
+					comp = (s1, s2) -> dir * nullComp(s1.getDate(), s2.getDate()); break;
 				 case Level:
-					comp = (s1, s2) -> dir * Integer.compare(s1.level, s2.level); break;
+					comp = (s1, s2) -> dir * Integer.compare(s1.getLevel(), s2.getLevel()); break;
 				 case Seconds:
-					comp = (s1, s2) -> dir * Long.compare(s1.duration, s2.duration); break;
+					comp = (s1, s2) -> dir * Long.compare(s1.getDuration(), s2.getDuration()); break;
 				}
 				m_statsAll.sort(comp);
 

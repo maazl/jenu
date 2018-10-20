@@ -71,7 +71,7 @@ public final class ThreadManager
 
 		// schedule starting points
 		for (String sp : Cfg.StartingPoints)
-			addLink(new Link(null, sp, rootURL, 0), 0);
+			addLink(new Link(null, sp, rootURL, 0), -1);
 
 		// and nor go parallel ...
 		startThreads();
@@ -141,10 +141,11 @@ public final class ThreadManager
 
 	private boolean applyLevelRecursive(PageStats stats, int level)
 	{	++level;
-		if (!stats.setLevel(level))
+		int old = stats.reduceLevel(level);
+		if (old == Integer.MAX_VALUE || old <= level)
 			return false;
 		// level lowered, i.e. found a shorter path => apply recursively
-		for (Link l : stats.linksOut)
+		for (Link l : stats.getLinksOut())
 		{	PageStats stats2 = urlsAll.get(l.Target);
 			if (stats2 != null)
 				if (applyLevelRecursive(stats2, level))
@@ -170,6 +171,7 @@ public final class ThreadManager
 		{	switch (url.charAt(i))
 			{case '/':
 				lastSlash = i;
+			 //$FALL-THROUGH$
 			 default:
 				continue;
 			 case '?':
@@ -198,14 +200,14 @@ public final class ThreadManager
 	synchronized boolean nextTask(PageGrabber grabber)
 	{
 		// Last task has finished
-		{	PageStats stats = grabber.getStats();
+		{	PageStats stats = grabber.m_stats;
 			stats.setDone();
 			++statsDone;
 			firePageEvent(stats, false);
 
 			if (isInternalUrl(stats.sUrl))
-				for (Link link : stats.linksOut)
-					addLink(link, stats.level);
+				for (Link link : stats.getLinksOut())
+					addLink(link, stats.getLevel());
 		}
 		// schedule new task?
 		if (scheduledPause || scheduledStop || statsToStart.size() == 0)
@@ -241,7 +243,7 @@ public final class ThreadManager
 	private void scheduleTask(PageGrabber grabber)
 	{
 		PageStats stats = statsToStart.pop();
-		grabber.reset(stats);
+		grabber.m_stats = stats;
 		stats.setRunning();
 		firePageEvent(stats, false);
 	}

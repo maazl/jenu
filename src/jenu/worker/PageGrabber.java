@@ -15,23 +15,13 @@ import com.quiotix.html.parser.HtmlDocument;
 final class PageGrabber extends Thread
 {
 	private final ThreadManager m_manager;
-	private PageStats m_stats = null;
+	PageStats m_stats = null;
 	private CountingBufferedInputStream m_input;
 
 	public PageGrabber(ThreadManager manager)
 	{
 		m_manager = manager;
 		setPriority(MIN_PRIORITY);
-	}
-
-	public void reset(PageStats stats)
-	{
-		m_stats = stats;
-	}
-
-	public PageStats getStats()
-	{
-		return m_stats;
 	}
 
 	public void run()
@@ -67,23 +57,21 @@ final class PageGrabber extends Thread
 
 	private void handleGenericConnection(URLConnection connection) throws IOException
 	{
-		m_stats.contentType = connection.getContentType();
+		m_stats.setContentType(connection.getContentType());
 		long lastModified = connection.getLastModified();
 		if (lastModified > 0)
-			m_stats.date = new Date(lastModified);
+			m_stats.setDate(new Date(lastModified));
 		try (CountingBufferedInputStream is = new CountingBufferedInputStream(connection.getInputStream()))
-		{	if (m_stats.contentType != null)
-			{	m_input = is;
-				if (m_stats.contentType.equals("text/html"))
-					handleHTML(is);
-				else
-				{	// handleUnparsedData(is, stats);
-				}
-				m_stats.size = connection.getContentLengthLong();
-				if (m_stats.size == -1L)
-					m_stats.size = is.getBytesRead();
-				m_stats.lines = is.getLine();
+		{	m_input = is;
+			if ("text/html".equals(m_stats.getContentType()))
+				handleHTML(is);
+			else
+			{	// handleUnparsedData(is, stats);
 			}
+			m_stats.setSize(connection.getContentLengthLong());
+			if (m_stats.getSize() == -1L)
+				m_stats.setSize(is.getBytesRead());
+			m_stats.setLines(is.getLine());
 		}
 	}
 
@@ -185,7 +173,7 @@ final class PageGrabber extends Thread
 		public void visit(HtmlDocument.Text t)
 		{
 			if (atTitle)
-				m_stats.title = t.text;
+				m_stats.setTitle(t.text);
 		}
 
 		public void visit(HtmlDocument.Newline n)
