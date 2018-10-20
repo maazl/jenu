@@ -49,13 +49,5 @@ button.
 NOTES:
 ------
 The html-parser.jar is from
-http://www.quiotix.com/downloads/html-parser
-
+  http://www.quiotix.com/downloads/html-parser
 and is fully owned by them, and distributable under the GPL.  
-
-I haven't worked on this project much lately, so if anybody would like
-to add features, feel free to contact me about it. 
-
-You can email me at ccrome at users.sourceforge.net
-
-of course, Replace the at with '@'
