@@ -165,7 +165,7 @@ final class JenuResultsTable extends JTable
 			 case Error:
 				return row.getErrorString();
 			 case Links_out:
-				return row.linksOut.size();
+				return row.linksOut.size() != 0 ? row.linksOut.size() : null;
 			 case Links_in:
 				return row.linksIn.size();
 			 case Server:
@@ -175,7 +175,7 @@ final class JenuResultsTable extends JTable
 			 case Size:
 				return row.size == -1L ? null : row.size;
 			 case Lines:
-				return row.lines == -1L ? null : row.lines;
+				return row.lines <= 0 ? null : row.lines;
 			 case Title:
 				return row.title;
 			 case Date:

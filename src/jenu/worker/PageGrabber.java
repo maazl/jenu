@@ -14,7 +14,7 @@ import com.quiotix.html.parser.HtmlDocument;
  */
 final class PageGrabber extends Thread
 {
-	private ThreadManager m_manager = null;
+	private final ThreadManager m_manager;
 	private PageStats m_stats = null;
 	private CountingBufferedInputStream m_input;
 

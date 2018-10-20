@@ -7,7 +7,7 @@ import java.io.IOException;
 final class CountingBufferedInputStream extends BufferedInputStream
 {
 	private long bytesRead = 0;
-	private int line = 1;
+	private int line = 0;
 
 	public CountingBufferedInputStream(InputStream in)
 	{
