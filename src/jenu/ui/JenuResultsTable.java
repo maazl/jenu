@@ -1,19 +1,21 @@
 package jenu.ui;
 
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.net.URL;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.EnumSet;
-import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Vector;
 
 import javax.swing.JTable;
+import javax.swing.JTextArea;
+import javax.swing.UIManager;
+import javax.swing.border.EmptyBorder;
 import javax.swing.table.AbstractTableModel;
-import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableCellRenderer;
 
 import jenu.worker.JenuPageEvent;
@@ -31,29 +33,23 @@ final class JenuResultsTable extends JTable
 		getTableHeader().addMouseListener(new MyHeaderListener());
 		setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 		setShowGrid(false);
+		getColumnModel().getColumn(Column.Error.ordinal()).setCellRenderer(new MultiLineCellRenderer());
 	}
 
-	protected Hashtable<Class<?>, Hashtable<Color,DefaultTableCellRenderer>> m_renderersByClass = new Hashtable<>();
+	private final static Color zebraBackground = new Color(0xeeeeee);
 
-	public TableCellRenderer getCellRenderer(int row, int column)
+	public Component prepareRenderer(TableCellRenderer renderer, int row, int column)
 	{
-		Object o = getValueAt(row, column);
-		if (o == null)
-			return super.getCellRenderer(row, column);
+		Component c = super.prepareRenderer(renderer, row, column);
 
-		Class<?> c = o.getClass();
-		if (!m_renderersByClass.contains(c))
-			m_renderersByClass.put(c, new Hashtable<>());
-
-		Hashtable<Color,DefaultTableCellRenderer> renderersByColor = m_renderersByClass.get(c);
-		Color color = getRunStateColor(((TableModel)dataModel).getRow(row).getRunState());
-		if (!renderersByColor.contains(color))
-		{
-			DefaultTableCellRenderer r = new DefaultTableCellRenderer(); // (DefaultTableCellRenderer)
-			r.setForeground(color);
-			renderersByColor.put(color, r);
+		if (!isRowSelected(row))
+		{	// Alternate background color
+			c.setBackground((row & 1) != 0 ? getBackground() : zebraBackground);
+			// state dependent foreground
+			c.setForeground(getRunStateColor(((TableModel)dataModel).getRow(row).getRunState()));
 		}
-		return renderersByColor.get(color);
+
+		return c;
 	}
 
 	private static Color getRunStateColor(PageState runState)
@@ -73,6 +69,45 @@ final class JenuResultsTable extends JTable
 		return null;
 	}
 
+	private static class MultiLineCellRenderer extends JTextArea implements TableCellRenderer
+	{
+		public MultiLineCellRenderer()
+		{	//setLineWrap(true);
+			//setWrapStyleWord(true);
+			setOpaque(true);
+		}
+
+		public Component getTableCellRendererComponent(JTable table, Object value,
+			boolean isSelected, boolean hasFocus, int row, int column)
+		{
+			if (isSelected)
+			{
+				setForeground(table.getSelectionForeground());
+				setBackground(table.getSelectionBackground());
+			} else
+			{
+				setForeground(table.getForeground());
+				setBackground(table.getBackground());
+			}
+			setFont(table.getFont());
+			if (hasFocus)
+			{
+				setBorder(UIManager.getBorder("Table.focusCellHighlightBorder"));
+				if (table.isCellEditable(row, column))
+				{
+					setForeground(UIManager.getColor("Table.focusCellForeground"));
+					setBackground(UIManager.getColor("Table.focusCellBackground"));
+				}
+			} else
+			{
+				setBorder(new EmptyBorder(1, 1, 1, 1));
+			}
+			setText((value == null) ? "" : value.toString());
+			table.setRowHeight(row, getPreferredSize().height);
+			return this;
+		}
+	}
+
 	private final class MyHeaderListener extends MouseAdapter
 	{
 		int m_sortColumn = -1;
@@ -86,6 +121,19 @@ final class JenuResultsTable extends JTable
 				m_sortColumn = column;
 				((TableModel)dataModel).sortByColumn(m_sortColumn, m_descending);
 			}
+		}
+	}
+
+	enum Column
+	{
+		Address, RunState, Status, Error, Title, Links_out, Links_in, Anchors, Server, Type, Size, Lines, Date, Level, Seconds;
+
+		private final static Column[] values = values();
+
+		public static Column fromOrdinal(int ordinal)
+		{	if (ordinal < 0 || ordinal >= values.length)
+				throw new Error("Invalid column index passed: " + ordinal);
+			return values[ordinal];
 		}
 	}
 
@@ -116,19 +164,6 @@ final class JenuResultsTable extends JTable
 			{	int i = m_statsAll.indexOf(e.page);
 				if (i >= 0)
 					fireTableRowsUpdated(i, i);
-			}
-		}
-
-		public enum Column
-		{
-			Address, RunState, Status, Error, Links_out, Links_in, Server, Type, Size, Lines, Title, Date, Level, Seconds;
-
-			private final static Column[] values = values();
-
-			public static Column fromOrdinal(int ordinal)
-			{	if (ordinal < 0 || ordinal >= values.length)
-					throw new Error("Invalid column index passed: " + ordinal);
-				return values[ordinal];
 			}
 		}
 
@@ -171,6 +206,10 @@ final class JenuResultsTable extends JTable
 				}
 			 case Links_in:
 				return row.getLinksIn().size();
+			 case Anchors:
+				{	int ret = row.getAnchors().size();
+					return ret == 0 ? null : ret;
+				}
 			 case Server:
 				return row.url != null ? row.url.getHost() : null;
 			 case Type:
@@ -215,6 +254,7 @@ final class JenuResultsTable extends JTable
 				return String.class;
 			 case Links_out:
 			 case Links_in:
+			 case Anchors:
 			 case Lines:
 			 case Level:
 				return Integer.class;
@@ -250,6 +290,8 @@ final class JenuResultsTable extends JTable
 					comp = (s1, s2) -> dir * Integer.compare(s1.getLinksOut().size(), s2.getLinksOut().size()); break;
 				 case Links_in:
 					comp = (s1, s2) -> dir * Integer.compare(s1.getLinksIn().size(), s2.getLinksIn().size()); break;
+				 case Anchors:
+					comp = (s1, s2) -> dir * Integer.compare(s1.getAnchors().size(), s2.getAnchors().size()); break;
 				 case Server:
 					comp = (s1, s2) -> dir * nullComp(s1.url != null ? s1.url.getHost() : null, s2.url != null ? s2.url.getHost() : null); break;
 				 case Type:

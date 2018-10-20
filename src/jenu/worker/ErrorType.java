@@ -4,7 +4,7 @@ public enum ErrorType
 {
 	IOError,
 	HTMLParseError,
-	InvalidLinks,
+	BadAnchor,
 	HTTPError,
 	URLError,
 	InternalError

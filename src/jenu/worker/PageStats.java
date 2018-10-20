@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import java.net.MalformedURLException;
 
 /**
@@ -52,7 +53,7 @@ public final class PageStats
 	public String getErrorString()
 	{	return errorString;
 	}
-	private volatile String errorString = "";
+	private volatile String errorString = null;
 
 	/** Time taken to analyze this document. &lt; 0 =&gt; in progress. */
 	public long getDuration()
@@ -70,7 +71,10 @@ public final class PageStats
 	{
 		runState = PageState.FAILED;
 		status.add(type);
-		errorString += '\n' + message;
+		if (errorString == null)
+			errorString = message;
+		else
+			errorString += '\n' + message;
 	}
 
 	void setDone()
@@ -78,6 +82,8 @@ public final class PageStats
 		duration += System.currentTimeMillis();
 		if (runState != PageState.FAILED)
 			runState = PageState.DONE;
+		// Check anchors of links added meanwhile
+		linksIn.forEach(this::checkAnchor);
 	}
 
 	void setRetry()
@@ -151,6 +157,8 @@ public final class PageStats
 	/** add incoming link, thread-safe! */
 	void addLinkIn(Link l)
 	{	linksIn.add(l);
+		if (runState.compareTo(PageState.DONE) >= 0)
+			checkAnchor(l); // page is complete, check anchors immediately
 	}
 	private final Vector<Link> linksIn = new Vector<>();
 	private final Collection<Link> linksInRO = Collections.unmodifiableCollection(linksIn);
@@ -207,6 +215,36 @@ public final class PageStats
 	private Set<String> anchors = null;
 	private volatile Set<String> anchorsRO = null;
 
+	/** Referenced anchor names <em>not</em> defined in this document. */
+	public Set<String> getBadAnchors()
+	{	Set<String> ret = badAnchorsRO;
+		return ret != null ? ret : Collections.<String>emptySet();
+	}
+	/** Add bad anchor, thread-safe
+	 * @param name Name
+	 * @return false: the bad anchor was identified before.
+	 */
+	private boolean addBadAnchor(String name)
+	{	if (badAnchors == null)
+		{	badAnchors = Collections.synchronizedSet(new HashSet<>());
+			badAnchorsRO = Collections.unmodifiableSet(badAnchors);
+		}
+		return badAnchors.add(name);
+	}
+	private Set<String> badAnchors = null;
+	private volatile Set<String> badAnchorsRO = null;
+
+
+	private void checkAnchor(Link l)
+	{	// already done?
+		if (l.getAnchorState() != null) // check implies l.Anchor != null
+			return;
+		// There is a race condition here. But on worst case the check is done twice.
+		boolean ok = getAnchors().contains(l.Anchor);
+		l.setAnchorState(ok);
+		if (!ok && addBadAnchor(l.Anchor))
+			setError(ErrorType.BadAnchor, '#' + l.Anchor);
+	}
 
 	public String toString()
 	{
