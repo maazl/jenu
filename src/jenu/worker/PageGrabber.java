@@ -49,9 +49,9 @@ final class PageGrabber extends Thread
 				else
 					handleGenericConnection(connection);
 			} catch (java.io.IOException ioe)
-			{	m_stats.setError(ErrorType.IOError, "Error making or reading from connection" + ioe.toString());
+			{	m_stats.setError(ErrorType.IOError, ioe.toString());
 			} catch (Throwable ex)
-			{	m_stats.setError(ErrorType.InternalError, "Unhandeled Error during processing" + ex.toString());
+			{	m_stats.setError(ErrorType.InternalError, ex.toString());
 			}
 		} while (m_manager.nextTask(this));
 	}
