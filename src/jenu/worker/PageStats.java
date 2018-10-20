@@ -29,6 +29,7 @@ public final class PageStats
 	public URL             url;
 	public final String    sUrl;
 	public Vector<Link>    linksIn     = new Vector<>();
+	public long            duration    = 0;
 
 	protected DateFormat df = DateFormat.getDateInstance();
 
@@ -100,6 +101,7 @@ public final class PageStats
 	void setRunning()
 	{
 		runState = PageState.RUNNING;
+		duration -= System.currentTimeMillis();
 	}
 
 	void setError(ErrorType type, String message)
@@ -111,6 +113,7 @@ public final class PageStats
 
 	void setDone()
 	{
+		duration += System.currentTimeMillis();
 		if (runState != PageState.FAILED)
 		runState = PageState.DONE;
 	}

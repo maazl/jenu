@@ -120,7 +120,7 @@ final class JenuResultsTable extends JTable
 
 		public enum Column
 		{
-			Address, RunState, Status, Error, Links_out, Links_in, Server, Type, Size, Lines, Title, Date, Level;
+			Address, RunState, Status, Error, Links_out, Links_in, Server, Type, Size, Lines, Title, Date, Level, Seconds;
 
 			private final static Column[] values = values();
 
@@ -182,6 +182,8 @@ final class JenuResultsTable extends JTable
 				return row.date;
 			 case Level:
 				return row.level == -1 ? null : row.level;
+			 case Seconds:
+				return row.duration <= 0 ? null : row.duration / 1000.;
 			}
 			return null; // Keep compiler happy
 		}
@@ -209,6 +211,8 @@ final class JenuResultsTable extends JTable
 				return Long.class;
 			 case Date:
 				return Date.class;
+			 case Seconds:
+				return Float.class;
 			}
 			return null; // Keep compiler happy
 		}
@@ -249,6 +253,8 @@ final class JenuResultsTable extends JTable
 					comp = (s1, s2) -> dir * nullComp(s1.date, s2.date); break;
 				 case Level:
 					comp = (s1, s2) -> dir * Integer.compare(s1.level, s2.level); break;
+				 case Seconds:
+					comp = (s1, s2) -> dir * Long.compare(s1.duration, s2.duration); break;
 				}
 				m_statsAll.sort(comp);
 
