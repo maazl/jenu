@@ -124,8 +124,8 @@ final class JenuResultsTable extends JTable
 
 			private final static Column[] values = values();
 
-			public static Column getByOrdinal(int ordinal)
-			{	if (ordinal < 0 && ordinal >= values.length)
+			public static Column fromOrdinal(int ordinal)
+			{	if (ordinal < 0 || ordinal >= values.length)
 					throw new Error("Invalid column index passed: " + ordinal);
 				return values[ordinal];
 			}
@@ -143,7 +143,7 @@ final class JenuResultsTable extends JTable
 
 		public String getColumnName(int columnIndex)
 		{
-			return Column.getByOrdinal(columnIndex).name().replace('_', ' ');
+			return Column.fromOrdinal(columnIndex).name().replace('_', ' ');
 		}
 
 		public int getColumnCount()
@@ -155,7 +155,7 @@ final class JenuResultsTable extends JTable
 		{
 			PageStats row = m_statsAll.get(rowIndex);
 
-			switch (Column.getByOrdinal(columnIndex))
+			switch (Column.fromOrdinal(columnIndex))
 			{case Address:
 				return row.sUrl;
 			 case RunState:
@@ -190,7 +190,7 @@ final class JenuResultsTable extends JTable
 
 		public Class<?> getColumnClass(int columnIndex)
 		{
-			switch (Column.getByOrdinal(columnIndex))
+			switch (Column.fromOrdinal(columnIndex))
 			{case Address:
 				return URL.class;
 			 case RunState:
@@ -226,7 +226,7 @@ final class JenuResultsTable extends JTable
 			if (m_statsAll != null && m_statsAll.size() > 0)
 			{
 				Comparator<PageStats> comp = null;
-				switch (Column.getByOrdinal(columnIndex))
+				switch (Column.fromOrdinal(columnIndex))
 				{case Address:
 					comp = (s1, s2) -> dir * s1.sUrl.compareTo(s2.sUrl); break;
 				 case RunState:
