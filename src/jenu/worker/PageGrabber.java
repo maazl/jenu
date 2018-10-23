@@ -16,7 +16,7 @@ final class PageGrabber extends Thread
 {
 	private final ThreadManager m_manager;
 	PageStats m_stats = null;
-	private CountingBufferedInputStream m_input;
+	private CountingInputStream m_input;
 
 	public PageGrabber(ThreadManager manager)
 	{
@@ -61,23 +61,48 @@ final class PageGrabber extends Thread
 		long lastModified = connection.getLastModified();
 		if (lastModified > 0)
 			m_stats.setDate(new Date(lastModified));
-		try (CountingBufferedInputStream is = new CountingBufferedInputStream(connection.getInputStream()))
+		try (CountingInputStream is = new CountingInputStream(connection.getInputStream()))
 		{	m_input = is;
-			if ("text/html".equals(m_stats.getContentType()))
-				handleHTML(is);
-			else
-			{	// handleUnparsedData(is, stats);
-			}
 			m_stats.setSize(connection.getContentLengthLong());
-			if (m_stats.getSize() == -1L)
-				m_stats.setSize(is.getBytesRead());
-			m_stats.setLines(is.getLine());
+			handleContent(m_stats.getContentType());
 		}
 	}
 
-	private void handleHTML(BufferedInputStream is)
+	private void handleContent(String mimeType) throws IOException
 	{
-		HtmlParser parser = new HtmlParser(is);
+		switch (String.valueOf(m_stats.getContentType()))
+		{case "text/html":
+			handleHTML();
+			handleEnd(false);
+			return;
+			//case "text/css":
+			// TODO: parse css
+		 case "text/plain":
+			// Work around for inability to identify directories by FileUrlConnection.
+			if ( m_stats.sUrl.startsWith("file:")
+				&& ( m_stats.sUrl.charAt(m_stats.sUrl.length()-1) == '/'
+					|| new File(m_stats.sUrl.substring(5)).isDirectory() ))
+				handleDirectory();
+			handleEnd(false);
+			return;
+		 default:
+			handleEnd(true);
+		}
+	}
+
+	private void handleEnd(boolean binary) throws IOException
+	{
+		if (m_stats.getSize() == -1L)
+		{	m_input.skipToEnd();
+			m_stats.setSize(m_input.getBytesRead());
+		}
+		if (!binary)
+			m_stats.setLines(m_input.getLine());
+	}
+
+	private void handleHTML()
+	{
+		HtmlParser parser = new HtmlParser(m_input);
 		try
 		{
 			HtmlDocument doc = parser.HtmlDocument();
@@ -91,17 +116,15 @@ final class PageGrabber extends Thread
 		}
 	}
 
-	/*private void handleUnparsedData(CountingBufferedInputStream is) throws IOException
+	private void handleDirectory() throws IOException
 	{
-		// REad it, and chew it up.
-		byte buffer[] = new byte[10000];
-		while (is.read(buffer) != -1)
-		{}
-	}*/
-
-	public String toString()
-	{
-		return m_stats.toString();
+		String s = new String(m_input.readAllBytes());
+		int last = 0;
+		int p;
+		while ((p = s.indexOf('\n', last)) > 0)
+		{	m_stats.addLinkOut(new Link("a", s.substring(last, p), m_stats.url, 0));
+			last = p + 1;
+		}
 	}
 
 

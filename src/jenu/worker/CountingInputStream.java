@@ -1,27 +1,26 @@
 package jenu.worker;
 
-import java.io.BufferedInputStream;
 import java.io.InputStream;
 import java.io.IOException;
 
-final class CountingBufferedInputStream extends BufferedInputStream
+final class CountingInputStream extends InputStream
 {
+	private final InputStream source;
+
 	private long bytesRead = 0;
 	private int line = 0;
 
-	public CountingBufferedInputStream(InputStream in)
-	{
-		super(in);
+	public CountingInputStream(InputStream in)
+	{	source = in;
 	}
 
-	public CountingBufferedInputStream(InputStream in, int size)
-	{
-		super(in, size);
+	public void close() throws IOException
+	{	source.close();
 	}
 
 	public synchronized int read() throws IOException
 	{
-		int c = super.read();
+		int c = source.read();
 		if (c != -1)
 		{	++bytesRead;
 			if (c == '\n')
@@ -32,14 +31,18 @@ final class CountingBufferedInputStream extends BufferedInputStream
 
 	public synchronized int read(byte[] b, int off, int len) throws IOException
 	{
-		int count = super.read(b, off, len);
-		if (count != -1)
+		int count = source.read(b, off, len);
+		if (count > 0)
 		{	bytesRead += count;
 			for (int i = off; i < off + len; ++i)
 				if (b[i] == '\n')
 					++line;
 		}
 		return count;
+	}
+
+	public void skipToEnd() throws IOException
+	{	while (skip(65536) > 0) {}
 	}
 
 	public long getBytesRead()
