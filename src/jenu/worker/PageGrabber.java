@@ -152,11 +152,21 @@ final class PageGrabber extends Thread
 				if ("text/css".equals(value))
 					typeX = ".css";
 				value = attributesGet(t.attributeList, "href");
-			} else
-			{	if (t.tagName.equalsIgnoreCase("title"))
-					atTitle = true;
+			} else if (t.tagName.equalsIgnoreCase("meta"))
+			{	if ("refresh".equalsIgnoreCase(attributesGet(t.attributeList, "http-equiv")))
+				{	value = attributesGet(t.attributeList, "content");
+					int p = value.toLowerCase().indexOf("url=");
+					if (p < 0)
+						return;
+					value = value.substring(p + 4).trim();
+				} else
+					return;
+			} else if (t.tagName.equalsIgnoreCase("title"))
+			{	atTitle = true;
 				return;
-			}
+			} else
+				return; //tag not relevant
+
 			// Handle links
 			if (value != null && value.length() != 0)
 			{	Link link = new Link(t.tagName.toLowerCase() + typeX, value, m_stats.url, m_input.getLine());
