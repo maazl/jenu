@@ -28,7 +28,6 @@ final class JenuResultsTable extends JTable
 	public JenuResultsTable(ThreadManager tm)
 	{
 		super(new TableModel(tm));
-		System.out.println(defaultRenderersByColumnClass);
 		getTableHeader().setReorderingAllowed(true);
 		getTableHeader().addMouseListener(new MyHeaderListener());
 		setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
@@ -103,7 +102,9 @@ final class JenuResultsTable extends JTable
 				setBorder(new EmptyBorder(1, 1, 1, 1));
 			}
 			setText((value == null) ? "" : value.toString());
-			table.setRowHeight(row, getPreferredSize().height);
+			int height = getPreferredSize().height;
+			if (table.getRowHeight(row) < height)
+				table.setRowHeight(row, height);
 			return this;
 		}
 	}
