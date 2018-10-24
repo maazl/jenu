@@ -6,9 +6,16 @@ import java.net.URL;
 /** Represents a Link between two pages. */
 public final class Link
 {
-	/** Type or origin of this link, i.e. name of the tag, i.e. "a" or "img" or "link".
-	 * The special value "link.css" is used for style sheet links.
-	 * The special value null is used to identify starting points. They are no real links. */
+	/** Link from CSS style (not necessarily from a style sheet) */
+	public final static String CSS = "CSS";
+	/** Virtual link from HTTP 30x redirect or directory URL */
+	public final static String REDIRECT = "REDIRECT";
+
+	/** Type or origin of this link, i.e. name of the tag, i.e. "a" or "img", "link" or "meta".
+	 * Special values:
+	 * - "CSS" => used for style sheet links, e.g. to background images.
+	 * - "REDIRECT" => followed a HTTP redirect or a directory redirect, i.e. file:/some/folder -> file:/some/folder/.
+	 * - null => used to identify starting points. They are no real links. */
 	public final String Type;
 	/** Target URL as in document */
 	public final String OriginalTarget;

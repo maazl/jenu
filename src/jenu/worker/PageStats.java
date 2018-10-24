@@ -67,14 +67,21 @@ public final class PageStats
 		duration -= System.currentTimeMillis();
 	}
 
+	void setInfo(ErrorType type, String message)
+	{
+		status.add(type);
+		if (message != null)
+		{	if (errorString == null)
+				errorString = message;
+			else
+				errorString += '\n' + message;
+		}
+	}
+
 	void setError(ErrorType type, String message)
 	{
 		runState = PageState.FAILED;
-		status.add(type);
-		if (errorString == null)
-			errorString = message;
-		else
-			errorString += '\n' + message;
+		setInfo(type, message);
 	}
 
 	void setDone()

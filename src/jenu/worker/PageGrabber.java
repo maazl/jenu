@@ -48,11 +48,23 @@ final class PageGrabber extends Thread
 
 	private void handleHTTPConnection(HttpURLConnection connection) throws IOException
 	{
-		int responseCode = connection.getResponseCode();
-		if (responseCode != HttpURLConnection.HTTP_OK)
-			m_stats.setError(ErrorType.HTTPError, connection.getResponseMessage());
-		else
+		switch(connection.getResponseCode())
+		{case HttpURLConnection.HTTP_OK:
 			handleGenericConnection(connection);
+			break;
+		 case HttpURLConnection.HTTP_MOVED_TEMP:
+		 case 307: // missing in HttpURLConnection
+			m_stats.setInfo(ErrorType.Redirect, connection.getResponseMessage());
+			m_stats.addLinkOut(new Link(Link.REDIRECT, connection.getHeaderField("Location"), m_stats.url, 0));
+			break;
+		 case HttpURLConnection.HTTP_MOVED_PERM:
+		 case 308: // missing in HttpURLConnection
+			m_stats.setError(ErrorType.Redirect, connection.getResponseMessage());
+			m_stats.addLinkOut(new Link(Link.REDIRECT, connection.getHeaderField("Location"), m_stats.url, 0));
+			break;
+		 default:
+			m_stats.setError(ErrorType.HTTPError, connection.getResponseMessage());
+		}
 	}
 
 	private void handleGenericConnection(URLConnection connection) throws IOException
@@ -79,10 +91,15 @@ final class PageGrabber extends Thread
 			// TODO: parse css
 		 case "text/plain":
 			// Work around for inability to identify directories by FileUrlConnection.
-			if ( m_stats.sUrl.startsWith("file:")
-				&& ( m_stats.sUrl.charAt(m_stats.sUrl.length()-1) == '/'
-					|| new File(m_stats.sUrl.substring(5)).isDirectory() ))
-				handleDirectory();
+			if (m_stats.sUrl.startsWith("file:"))
+			{	if (m_stats.sUrl.charAt(m_stats.sUrl.length()-1) == '/')
+					handleDirectory();
+				else if (new File(m_stats.sUrl.substring(5)).isDirectory())
+				{	m_stats.setInfo(ErrorType.Redirect, "Directory redirect");
+					m_stats.addLinkOut(new Link(Link.REDIRECT, m_stats.sUrl + '/', m_stats.url, 0));
+					return;
+				}
+			}
 			handleEnd(false);
 			return;
 		 default:
@@ -139,7 +156,7 @@ final class PageGrabber extends Thread
 		{
 			atTitle = false;
 			String value = null;
-			String typeX = "";
+			String type = null;
 			if (t.tagName.equalsIgnoreCase("a"))
 			{	value = attributesGet(t.attributeList, "name");
 				if (value != null)
@@ -150,7 +167,7 @@ final class PageGrabber extends Thread
 			else if (t.tagName.equalsIgnoreCase("link"))
 			{	value = attributesGet(t.attributeList, "type");
 				if ("text/css".equals(value))
-					typeX = ".css";
+					type = "link.css";
 				value = attributesGet(t.attributeList, "href");
 			} else if (t.tagName.equalsIgnoreCase("meta"))
 			{	if ("refresh".equalsIgnoreCase(attributesGet(t.attributeList, "http-equiv")))
@@ -169,7 +186,7 @@ final class PageGrabber extends Thread
 
 			// Handle links
 			if (value != null && value.length() != 0)
-			{	Link link = new Link(t.tagName.toLowerCase() + typeX, value, m_stats.url, m_input.getLine());
+			{	Link link = new Link(type != null ? type : t.tagName.toLowerCase(), value, m_stats.url, m_input.getLine());
 				m_stats.addLinkOut(link);
 			}
 		}
