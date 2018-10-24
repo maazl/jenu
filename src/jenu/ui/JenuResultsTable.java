@@ -224,7 +224,9 @@ final class JenuResultsTable extends JTable
 					return ret <= 0 ? null : ret;
 				}
 			 case Title:
-				return row.getTitle();
+				{	String ret = row.getTitle();
+					return ret != null ? "<html>" + ret + "</html>" : null;
+				}
 			 case Date:
 				return row.getDate();
 			 case Level:
