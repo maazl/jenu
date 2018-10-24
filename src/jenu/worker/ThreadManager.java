@@ -17,6 +17,9 @@ public final class ThreadManager
 
 	/** Current WorkingSet to be executed. */
 	private WorkingSet Cfg;
+	public WorkingSet getWorkingSet()
+	{	return Cfg;
+	}
 	private boolean    scheduledStop = true;
 	private boolean    scheduledPause;
 

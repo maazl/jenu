@@ -16,4 +16,6 @@ public class WorkingSet
 	/** Check external URLs as well.
 	 * If true any external link is checked for validity too. But external URLs are never scanned recursively. */
 	public boolean CheckExternalURLs = true;
+	/** Timeout in ms for connections. */
+	public int Timeout = 10000;
 }

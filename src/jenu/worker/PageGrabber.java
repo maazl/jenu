@@ -31,8 +31,8 @@ final class PageGrabber extends Thread
 			try
 			{
 				URLConnection connection = url.openConnection();
-				connection.setConnectTimeout(20000);
-				connection.setReadTimeout(10000);
+				connection.setConnectTimeout(m_manager.getWorkingSet().Timeout);
+				connection.setReadTimeout(m_manager.getWorkingSet().Timeout);
 				connection.connect();
 				if (connection instanceof HttpURLConnection)
 					handleHTTPConnection((HttpURLConnection)connection);
