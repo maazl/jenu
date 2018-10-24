@@ -185,12 +185,9 @@ final class PageGrabber extends Thread
 				if (attribute.name.equalsIgnoreCase(name))
 				{
 					String value = attribute.value;
-					int firstQuote = value.indexOf("\"");
-					int lastQuote = value.lastIndexOf("\"");
-					firstQuote = (firstQuote == -1) ? 0 : firstQuote;
-					lastQuote = (lastQuote == -1) ? value.length() - 1 : lastQuote;
-					String v = value.substring(firstQuote + 1, lastQuote);
-					return v;
+					if (value.length() >= 2 && value.charAt(0) == '"' && value.charAt(value.length()-1) == '"')
+						value = value.substring(1, value.length() - 1);
+					return value;
 				}
 			}
 			return null;
