@@ -3,13 +3,12 @@ package jenu.worker;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.regex.Pattern;
-
-import org.apache.commons.lang3.ArrayUtils;
 
 
 public final class ThreadManager
@@ -273,47 +272,39 @@ public final class ThreadManager
 	}
 
 	// Methods for JenuThreadListeners
-	private volatile JenuThreadListener[]	threadListeners	= new JenuThreadListener[0];
+	private final ArrayList<JenuThreadListener> threadListeners	= new ArrayList<>();
 
 	public synchronized void addThreadListener(JenuThreadListener l)
-	{
-		threadListeners = ArrayUtils.add(threadListeners, l);
+	{	threadListeners.add(l);
 	}
 
 	public synchronized void removeThreadListener(JenuThreadListener l)
-	{
-		threadListeners = ArrayUtils.removeElement(threadListeners, l);
+	{	threadListeners.remove(l);
 	}
 
 	private void fireThreadEvent()
-	{
-		JenuThreadListener[] l = threadListeners;
-		if (l != null)
+	{	if (threadListeners.size() != 0)
 		{	JenuThreadEvent e = new JenuThreadEvent(this, urlsAll.size(), statsDone, threadsRunning.size(), statsToStart.size());
-			for (JenuThreadListener i : l)
+			for (JenuThreadListener i : threadListeners)
 				i.threadStateChanged(e);
 		}
 	}
 
 	// Methods for JenuPageListeners
-	private volatile JenuPageListener[]		pageListeners		= new JenuPageListener[0];
+	private volatile ArrayList<JenuPageListener> pageListeners = new ArrayList<>();
 
 	public synchronized void addPageListener(JenuPageListener l)
-	{
-		pageListeners = ArrayUtils.add(pageListeners, l);
+	{	pageListeners.add(l);
 	}
 
 	public synchronized void removePageListener(JenuPageListener l)
-	{
-		pageListeners = ArrayUtils.removeElement(pageListeners, l);
+	{	pageListeners.remove(l);
 	}
 
 	private void firePageEvent(PageStats page, boolean isNew)
-	{
-		JenuPageListener[] l = pageListeners;
-		if (l != null)
+	{	if (pageListeners.size() != 0)
 		{	JenuPageEvent e = new JenuPageEvent(this, page, isNew);
-			for (JenuPageListener i : l)
+			for (JenuPageListener i : pageListeners)
 				i.pageChanged(e);
 		}
 	}
