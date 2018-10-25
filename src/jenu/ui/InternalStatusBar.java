@@ -22,7 +22,7 @@ final class InternalStatusBar extends JToolBar implements JenuThreadListener
 
 	public void threadStateChanged(JenuThreadEvent e)
 	{
-		m_threadsRunning.setMaximum(e.m_maxThreadsRunning);
+		m_threadsRunning.setMaximum(e.getSource().getWorkingSet().MaxWorkerThreads);
 		m_threadsRunning.setValue(e.m_threadsRunning);
 
 		m_urlsDone.setMaximum(e.m_totalUrlsToCheck);

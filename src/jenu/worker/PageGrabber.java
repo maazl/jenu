@@ -47,20 +47,22 @@ final class PageGrabber extends Thread
 	}
 
 	private void handleHTTPConnection(HttpURLConnection connection) throws IOException
-	{
+	{	String location;
 		switch(connection.getResponseCode())
 		{case HttpURLConnection.HTTP_OK:
 			handleGenericConnection(connection);
 			break;
 		 case HttpURLConnection.HTTP_MOVED_TEMP:
 		 case 307: // missing in HttpURLConnection
-			m_stats.setInfo(ErrorType.Redirect, connection.getResponseMessage());
-			m_stats.addLinkOut(new Link(Link.REDIRECT, connection.getHeaderField("Location"), m_stats.url, 0));
+			location = connection.getHeaderField("Location");
+			m_stats.setInfo(ErrorType.Redirect, connection.getResponseMessage() + ' ' + location);
+			m_stats.addLinkOut(new Link(Link.REDIRECT, location, m_stats.url, 0));
 			break;
 		 case HttpURLConnection.HTTP_MOVED_PERM:
 		 case 308: // missing in HttpURLConnection
-			m_stats.setError(ErrorType.Redirect, connection.getResponseMessage());
-			m_stats.addLinkOut(new Link(Link.REDIRECT, connection.getHeaderField("Location"), m_stats.url, 0));
+			location = connection.getHeaderField("Location");
+			m_stats.setError(ErrorType.Redirect, connection.getResponseMessage() + ' ' + location);
+			m_stats.addLinkOut(new Link(Link.REDIRECT, location, m_stats.url, 0));
 			break;
 		 default:
 			m_stats.setError(ErrorType.HTTPError, connection.getResponseMessage());

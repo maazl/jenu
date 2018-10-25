@@ -7,26 +7,27 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.ArrayUtils;
 
 
 public final class ThreadManager
 {
-	public int concurrentThreads = 10;
-
 	/** Current WorkingSet to be executed. */
 	private WorkingSet Cfg;
 	public WorkingSet getWorkingSet()
 	{	return Cfg;
 	}
-	private boolean    scheduledStop = true;
-	private boolean    scheduledPause;
+	private Pattern[] Exclusions;
 
-	private HashMap<String, PageStats> urlsAll        = new HashMap<String, PageStats>();
-	private ArrayDeque<PageStats>      statsToStart   = new ArrayDeque<PageStats>();
-	private int                        statsDone      = 0;
-	private HashSet<PageGrabber>       threadsRunning = new HashSet<PageGrabber>();
+	private boolean scheduledStop = true;
+	private boolean scheduledPause;
+
+	private final HashMap<String, PageStats> urlsAll        = new HashMap<>();
+	private final ArrayDeque<PageStats>      statsToStart   = new ArrayDeque<>();
+	private int                              statsDone      = 0;
+	private final HashSet<PageGrabber>       threadsRunning = new HashSet<>();
 
 
 	/** Initialize worker to analyze a site.
@@ -72,11 +73,17 @@ public final class ThreadManager
 			}
 		}
 
+		// compile exclude Regexes
+		Exclusions = new Pattern[Cfg.ExcludePatterns.size()];
+		int i = 0;
+		for (String excl : Cfg.ExcludePatterns)
+			Exclusions[i++] = Pattern.compile(excl);
+
 		// schedule starting points
 		for (String sp : Cfg.StartingPoints)
 			addLink(new Link(null, sp, rootURL, 0), -1);
 
-		// and nor go parallel ...
+		// and now go parallel ...
 		startThreads();
 	}
 
@@ -123,23 +130,23 @@ public final class ThreadManager
 
 	private void addLink(Link link, int level)
 	{
-		if (Cfg.CheckExternalURLs || isInternalUrl(link.Target))
-		{
-			PageStats stats = urlsAll.get(link.Target);
-			boolean isNew = stats == null;
-			if (isNew)
-			{	stats = new PageStats(link.Target);
-				urlsAll.put(link.Target, stats);
-				statsToStart.add(stats);
-			}
+		if (level >= Cfg.MaxDepth)
+			return; // too deep
 
-			if (link.Type != null)
-				stats.addLinkIn(link);
-
-			applyLevelRecursive(stats, level);
-
-			firePageEvent(stats, isNew);
+		PageStats stats = urlsAll.get(link.Target);
+		boolean isNew = stats == null;
+		if (isNew)
+		{	stats = new PageStats(link.Target);
+			urlsAll.put(link.Target, stats);
+			statsToStart.add(stats);
 		}
+
+		if (link.Type != null)
+			stats.addLinkIn(link);
+
+		applyLevelRecursive(stats, level);
+
+		firePageEvent(stats, isNew);
 	}
 
 	private boolean applyLevelRecursive(PageStats stats, int level)
@@ -165,6 +172,15 @@ public final class ThreadManager
 		if (p >= 0)
 			return true; // exact hit
 		return p != -1 && url.startsWith(Cfg.Sites.get(-2 - p));
+	}
+
+	/** Checks whether any of the exclude patterns matches an URL. */
+	private boolean isExcluded(String url)
+	{
+		for (Pattern rx : Exclusions)
+			if (rx.matcher(url).find())
+				return true;
+		return false;
 	}
 
 	/** Retrieve path component of URL */
@@ -208,10 +224,15 @@ public final class ThreadManager
 			++statsDone;
 			firePageEvent(stats, false);
 
-			if (isInternalUrl(stats.sUrl))
+			boolean isIntern = isInternalUrl(stats.sUrl);
+			if (isIntern || Cfg.FollowExternalRedirects)
 				for (Link link : stats.getLinksOut())
-					addLink(link, stats.getLevel());
+					if ((isIntern || link.Type == Link.REDIRECT) // Allow redirects always because w/o FollowExternalRedirects you won't get that far
+						&& (Cfg.CheckExternalURLs || isInternalUrl(link.Target)) // Do not add external Targets unless enabled.
+						&& !isExcluded(link.Target)) // Exclude beats all
+						addLink(link, stats.getLevel());
 		}
+
 		// schedule new task?
 		if (scheduledPause || scheduledStop || statsToStart.size() == 0)
 		{	// no more work for now, thread will die.
@@ -235,7 +256,7 @@ public final class ThreadManager
 	 */
 	private PageGrabber startNextThread()
 	{
-		if (threadsRunning.size() >= concurrentThreads || statsToStart.size() == 0)
+		if (threadsRunning.size() >= Cfg.MaxWorkerThreads || statsToStart.size() == 0)
 			return null;
 		PageGrabber grabber = new PageGrabber(this);
 		threadsRunning.add(grabber);
@@ -268,7 +289,7 @@ public final class ThreadManager
 	{
 		JenuThreadListener[] l = threadListeners;
 		if (l != null)
-		{	JenuThreadEvent e = new JenuThreadEvent(this, urlsAll.size(), statsDone, concurrentThreads, threadsRunning.size(), statsToStart.size());
+		{	JenuThreadEvent e = new JenuThreadEvent(this, urlsAll.size(), statsDone, threadsRunning.size(), statsToStart.size());
 			for (JenuThreadListener i : l)
 				i.threadStateChanged(e);
 		}
