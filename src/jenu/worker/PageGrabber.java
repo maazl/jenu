@@ -39,9 +39,9 @@ final class PageGrabber extends Thread
 				else
 					handleGenericConnection(connection);
 			} catch (java.io.IOException ioe)
-			{	m_stats.setError(ErrorType.IOError, ioe.toString());
+			{	m_stats.setError(EventType.IO_error, ioe.toString());
 			} catch (Throwable ex)
-			{	m_stats.setError(ErrorType.InternalError, ex.toString());
+			{	m_stats.setError(EventType.Internal_error, ex.toString());
 			}
 		} while (m_manager.nextTask(this));
 	}
@@ -55,17 +55,17 @@ final class PageGrabber extends Thread
 		 case HttpURLConnection.HTTP_MOVED_TEMP:
 		 case 307: // missing in HttpURLConnection
 			location = connection.getHeaderField("Location");
-			m_stats.setInfo(ErrorType.Redirect, connection.getResponseMessage() + ' ' + location);
+			m_stats.setInfo(EventType.Redirect, connection.getResponseMessage() + ' ' + location);
 			m_stats.addLinkOut(new Link(Link.REDIRECT, location, m_stats.url, 0));
 			break;
 		 case HttpURLConnection.HTTP_MOVED_PERM:
 		 case 308: // missing in HttpURLConnection
 			location = connection.getHeaderField("Location");
-			m_stats.setError(ErrorType.Redirect, connection.getResponseMessage() + ' ' + location);
+			m_stats.setError(EventType.Redirect, connection.getResponseMessage() + ' ' + location);
 			m_stats.addLinkOut(new Link(Link.REDIRECT, location, m_stats.url, 0));
 			break;
 		 default:
-			m_stats.setError(ErrorType.HTTPError, connection.getResponseMessage());
+			m_stats.setError(EventType.HTTP_error, connection.getResponseMessage());
 		}
 	}
 
@@ -97,7 +97,7 @@ final class PageGrabber extends Thread
 			{	if (m_stats.sUrl.charAt(m_stats.sUrl.length()-1) == '/')
 					handleDirectory();
 				else if (new File(m_stats.sUrl.substring(5)).isDirectory())
-				{	m_stats.setInfo(ErrorType.Redirect, "Directory redirect");
+				{	m_stats.setInfo(EventType.Redirect, "Directory redirect");
 					m_stats.addLinkOut(new Link(Link.REDIRECT, m_stats.sUrl + '/', m_stats.url, 0));
 					return;
 				}
@@ -128,10 +128,10 @@ final class PageGrabber extends Thread
 			doc.accept(new HtmlLinkGrabber());
 		} catch (com.quiotix.html.parser.ParseException e)
 		{
-			m_stats.setError(ErrorType.HTMLParseError, e.toString());
+			m_stats.setError(EventType.HTML_parse_error, e.toString());
 		} catch (com.quiotix.html.parser.TokenMgrError err)
 		{
-			m_stats.setError(ErrorType.HTMLParseError, err.toString());
+			m_stats.setError(EventType.HTML_parse_error, err.toString());
 		}
 	}
 

@@ -32,7 +32,7 @@ public final class PageStats
 		try
 		{	url = new URL(strURL);
 		} catch (MalformedURLException e)
-		{	setError(ErrorType.URLError, e.getMessage());
+		{	setError(EventType.URL_error, e.getMessage());
 		}
 		this.url = url;
 	}
@@ -44,16 +44,16 @@ public final class PageStats
 	private volatile PageState runState = PageState.PENDING;
 
 	/** Which error types occurred, if any? */
-	public EnumSet<ErrorType> getStatus()
-	{	return status;
+	public EnumSet<EventType> getEvents()
+	{	return events;
 	}
-	private final EnumSet<ErrorType> status = EnumSet.noneOf(ErrorType.class);
+	private final EnumSet<EventType> events = EnumSet.noneOf(EventType.class);
 
 	/** Err text (mutilline) */
-	public String getErrorString()
-	{	return errorString;
+	public String getMessages()
+	{	return messages;
 	}
-	private volatile String errorString = null;
+	private volatile String messages = null;
 
 	/** Time taken to analyze this document. &lt; 0 =&gt; in progress. */
 	public long getDuration()
@@ -67,18 +67,18 @@ public final class PageStats
 		duration -= System.currentTimeMillis();
 	}
 
-	void setInfo(ErrorType type, String message)
+	void setInfo(EventType type, String message)
 	{
-		status.add(type);
+		events.add(type);
 		if (message != null)
-		{	if (errorString == null)
-				errorString = message;
+		{	if (messages == null)
+				messages = message;
 			else
-				errorString += '\n' + message;
+				messages += '\n' + message;
 		}
 	}
 
-	void setError(ErrorType type, String message)
+	void setError(EventType type, String message)
 	{
 		runState = PageState.FAILED;
 		setInfo(type, message);
@@ -97,8 +97,8 @@ public final class PageStats
 	{
 		runState = PageState.RETRY;
 		// reset state
-		status.clear();
-		errorString = "";
+		events.clear();
+		messages = "";
 
 		contentType = null;
 		size        = -1;
@@ -250,15 +250,15 @@ public final class PageStats
 		boolean ok = getAnchors().contains(l.Anchor);
 		l.setAnchorState(ok);
 		if (!ok && addBadAnchor(l.Anchor))
-			setError(ErrorType.BadAnchor, '#' + l.Anchor);
+			setError(EventType.Bad_anchor, '#' + l.Anchor);
 	}
 
 	public String toString()
 	{
 		String result =
 			"URL         = " + url + "\n" +
-			"status      = " + status + "\n" +
-			"errorString = " + errorString + "\n" +
+			"status      = " + events + "\n" +
+			"errorString = " + messages + "\n" +
 			"contentType = " + contentType + "\n" +
 			"size        = " + size + "\n" +
 			"title       = " + title + "\n" +

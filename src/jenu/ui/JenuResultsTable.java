@@ -7,7 +7,6 @@ import java.awt.event.MouseEvent;
 import java.net.URL;
 import java.util.Comparator;
 import java.util.Date;
-import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.Vector;
 
@@ -18,6 +17,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableCellRenderer;
 
+import jenu.worker.EventType;
 import jenu.worker.JenuPageEvent;
 import jenu.worker.PageState;
 import jenu.worker.PageStats;
@@ -32,7 +32,8 @@ final class JenuResultsTable extends JTable
 		getTableHeader().addMouseListener(new MyHeaderListener());
 		setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 		setShowGrid(false);
-		getColumnModel().getColumn(Column.Error.ordinal()).setCellRenderer(new MultiLineCellRenderer());
+		getColumnModel().getColumn(Column.Events.ordinal()).setCellRenderer(new MultiLineCellRenderer());
+		getColumnModel().getColumn(Column.Messages.ordinal()).setCellRenderer(new MultiLineCellRenderer());
 	}
 
 	private final static Color zebraBackground = new Color(0xeeeeee);
@@ -57,16 +58,18 @@ final class JenuResultsTable extends JTable
 		{case PENDING:
 			return Color.gray;
 		 case RUNNING:
-			return Color.orange;
+			return Color.blue;
 		 case RETRY:
 			return Color.magenta;
 		 case DONE:
-			return Color.green;
+			return MyGREEN;
 		 case FAILED:
 			return Color.red;
 		}
 		return null;
 	}
+
+	private final static Color MyGREEN = new Color(0x00aa00);
 
 	private static class MultiLineCellRenderer extends JTextArea implements TableCellRenderer
 	{
@@ -127,7 +130,7 @@ final class JenuResultsTable extends JTable
 
 	enum Column
 	{
-		Address, RunState, Status, Error, Title, Links_out, Links_in, Anchors, Server, Type, Size, Lines, Date, Level, Seconds;
+		Address, Status, Events, Messages, Title, Links_out, Links_in, Anchors, Server, Type, Size, Lines, Date, Level, Seconds;
 
 		private final static Column[] values = values();
 
@@ -195,18 +198,32 @@ final class JenuResultsTable extends JTable
 			switch (Column.fromOrdinal(columnIndex))
 			{case Address:
 				return row.sUrl;
-			 case RunState:
-				return row.getRunState();
 			 case Status:
-				return row.getStatus().isEmpty() ? null : row.getStatus();
-			 case Error:
-				return row.getErrorString();
+				return row.getRunState();
+			 case Events:
+				{	if (row.getEvents().isEmpty())
+						return null;
+					StringBuffer sb = new StringBuffer();
+					for (EventType ev : row.getEvents())
+					{	if (sb.length() != 0)
+							sb.append('\n');
+						sb.append(ev);
+					}
+					for (int i = 0; i < sb.length(); i++)
+						if (sb.charAt(i) == '_')
+							sb.setCharAt(i, ' ');
+					return sb.toString();
+				}
+			 case Messages:
+				return row.getMessages();
 			 case Links_out:
 				{	int ret = row.getLinksOut().size();
-					return ret != 0 ? ret : null;
+					return ret == 0 ? null : ret;
 				}
 			 case Links_in:
-				return row.getLinksIn().size();
+				{	long ret = row.getLinksIn().size();
+					return ret == 0 ? null : ret;
+				}
 			 case Anchors:
 				{	int ret = row.getAnchors().size();
 					return ret == 0 ? null : ret;
@@ -246,11 +263,10 @@ final class JenuResultsTable extends JTable
 			switch (Column.fromOrdinal(columnIndex))
 			{case Address:
 				return URL.class;
-			 case RunState:
-				return PageState.class;
 			 case Status:
-				return EnumSet.class;
-			 case Error:
+				return PageState.class;
+			 case Events:
+			 case Messages:
 			 case Server:
 			 case Type:
 			 case Title:
@@ -283,12 +299,12 @@ final class JenuResultsTable extends JTable
 				switch (Column.fromOrdinal(columnIndex))
 				{case Address:
 					comp = (s1, s2) -> dir * s1.sUrl.compareTo(s2.sUrl); break;
-				 case RunState:
-					comp = (s1, s2) -> dir * nullComp(s1.getRunState(), s2.getRunState()); break;
 				 case Status:
-					comp = (s1, s2) -> dir * sortedSequenceComp(s1.getStatus(), s2.getStatus()); break;
-				 case Error:
-					comp = (s1, s2) -> dir * nullComp(s1.getErrorString(), s2.getErrorString()); break;
+					comp = (s1, s2) -> dir * nullComp(s1.getRunState(), s2.getRunState()); break;
+				 case Events:
+					comp = (s1, s2) -> dir * sortedSequenceComp(s1.getEvents(), s2.getEvents()); break;
+				 case Messages:
+					comp = (s1, s2) -> dir * nullComp(s1.getMessages(), s2.getMessages()); break;
 				 case Links_out:
 					comp = (s1, s2) -> dir * Integer.compare(s1.getLinksOut().size(), s2.getLinksOut().size()); break;
 				 case Links_in:
@@ -339,11 +355,7 @@ final class JenuResultsTable extends JTable
 				if (!i2.hasNext())
 					return 1;
 				T v1 = i1.next(), v2 = i2.next();
-				if (v1 == null)
-					return v2 == null ? 0 : -1;
-				if (v2 == null)
-					return 1;
-				int cmp = v1.compareTo(v2);
+				int cmp = nullComp(v1, v2);
 				if (cmp != 0)
 					return cmp;
 			}
