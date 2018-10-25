@@ -300,9 +300,9 @@ final class JenuResultsTable extends JTable
 				 case Type:
 					comp = (s1, s2) -> dir * nullComp(s1.getContentType(), s2.getContentType()); break;
 				 case Size:
-					comp = (s1, s2) -> dir * nullComp(s1.getErrorString(), s2.getErrorString()); break;
-				 case Lines:
 					comp = (s1, s2) -> dir * Long.compare(s1.getSize(), s2.getSize()); break;
+				 case Lines:
+					comp = (s1, s2) -> dir * Integer.compare(s1.getLines(), s2.getLines()); break;
 				 case Title:
 					comp = (s1, s2) -> dir * nullComp(s1.getTitle(), s2.getTitle()); break;
 				 case Date:
