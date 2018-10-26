@@ -8,13 +8,6 @@ import java.util.Hashtable;
 public final class Jenu extends JFrame
 // implements PropertyChangeListener
 {
-	public static final int STATE_RUNNING = 0;
-	public static final int STATE_PAUSED = 1;
-	public static final int STATE_STOPPED = 2;
-
-	private int m_state = STATE_STOPPED;
-
-	private Hashtable<String,JenuAction> m_actions = new Hashtable<String,JenuAction>();
 	private JDesktopPane m_desktop = null;
 
 	// protected JenuSettings m_settings = new JenuSettings();
@@ -40,8 +33,7 @@ public final class Jenu extends JFrame
 				System.exit(0);
 			}
 		});
-		initActions();
-		setJMenuBar(new JenuMenu(this));
+		setJMenuBar(new Menu());
 		m_desktop = new JDesktopPane();
 
 		setContentPane(m_desktop);
@@ -54,33 +46,12 @@ public final class Jenu extends JFrame
 
 	}
 
-	void createNewWindow()
+	private void createNewWindow()
 	{
 		JInternalFrame internal = new JenuInternalFrame(this);
 		internal.setVisible(true);
 		m_desktop.add(internal);
 		m_desktop.moveToFront(internal);
-	}
-
-	private void initActions()
-	{
-		// m_actions.put("checkURL", new ActionCheckURL(this));
-		m_actions.put("new", new ActionNew(this));
-		m_actions.put("exit", new ActionExit(this));
-	}
-
-	public JenuAction getAction(String actionName)
-	{
-		JenuAction action = m_actions.get(actionName);
-		if (action == null)
-			throw new Error("Action not defined (" + actionName + ")");
-		return m_actions.get(actionName);
-	}
-
-	private void setRunningState(int state)
-	{
-		if (m_state == STATE_STOPPED)
-			m_actions.get("checkURL").setEnabled(true);
 	}
 
 	// public JenuSettings getSettings() {
@@ -95,4 +66,62 @@ public final class Jenu extends JFrame
 	// tm.start();
 	// }
 	// }
+
+	private final class Menu extends JMenuBar
+	{
+		public Menu()
+		{
+			super();
+			add(createFileMenu());
+			// add(createViewMenu());
+			// add(createOptionsMenu());
+			// add(createHelpMenu());
+		}
+
+		private JMenu createFileMenu()
+		{
+			JMenu menu = new JMenu("File");
+			menu.add(new AbstractAction("New window")
+				{	public void actionPerformed(ActionEvent e)
+					{	createNewWindow();
+					}
+				} );
+			/*menu.add(new AbstractAction("Open...")
+			{	public void actionPerformed(java.awt.event.ActionEvent e)
+				{	OpenURLDialog open = new OpenURLDialog(owner);
+					open.show();
+				}
+			} );*/
+			menu.addSeparator();
+			// menu.addSeparator();
+			menu.add(new AbstractAction("Exit")
+				{	public void actionPerformed(ActionEvent e)
+					{	System.exit(0);
+					}
+				} );
+			return menu;
+		}
+
+		/*private JMenu createOptionsMenu()
+		{
+			JMenu menu = new JMenu("Options");
+			menu.add(new JMenuItem("Preferences..."));
+			return menu;
+		}
+
+		private JMenu createHelpMenu()
+		{
+			JMenu menu = new JMenu("Help");
+			menu.add(new JMenuItem("Help"));
+			return menu;
+		}
+
+		private JMenu createViewMenu()
+		{
+			JMenu menu = new JMenu("View");
+			menu.add(new JCheckBoxMenuItem("Toolbar"));
+			menu.add(new JCheckBoxMenuItem("Status Bar"));
+			return menu;
+		}*/
+	}
 }
