@@ -40,7 +40,6 @@ final class JenuInternalFrame extends JInternalFrame
 		m_owner = owner;
 		setLocation(xOffset + openFrameCount * 20, yOffset + openFrameCount * 20);
 		setSize(new Dimension(50, 50));
-		// this.setJMenuBar(new JenuMenu(m_owner));
 		m_toolBar = new ToolBar();
 		getContentPane().add(m_toolBar, BorderLayout.NORTH);
 		m_statusBar = new StatusBar();
@@ -48,7 +47,6 @@ final class JenuInternalFrame extends JInternalFrame
 		m_scroll = new URLDisplay();
 		getContentPane().add(m_scroll, BorderLayout.CENTER);
 		setPreferredSize(new Dimension(400, 200));
-		grabFocus();
 		pack();
 	}
 

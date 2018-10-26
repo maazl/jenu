@@ -2,6 +2,8 @@ package jenu.ui;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.beans.PropertyVetoException;
+
 import javax.swing.*;
 import java.util.Hashtable;
 
@@ -14,9 +16,10 @@ public final class Jenu extends JFrame
 
 	public static void main(String args[])
 	{
-		Jenu jenu = new Jenu("Jenu");
+		Jenu jenu = new Jenu("Jenu Link Checker");
 		jenu.initialize();
 		jenu.setVisible(true);
+		jenu.createNewWindow();
 	}
 
 	public Jenu(String title)
@@ -27,10 +30,8 @@ public final class Jenu extends JFrame
 	private void initialize()
 	{
 		addWindowListener(new WindowAdapter()
-		{
-			public void windowClosing(WindowEvent e)
-			{
-				System.exit(0);
+		{	public void windowClosing(WindowEvent e)
+			{	System.exit(0);
 			}
 		});
 		setJMenuBar(new Menu());
@@ -39,19 +40,20 @@ public final class Jenu extends JFrame
 		setContentPane(m_desktop);
 		m_desktop.putClientProperty("JDesktopPane.dragMode", "outline");
 
-		createNewWindow();
 		// m_settings.addPropertyChangeListener(this);
 		pack();
 		setSize(new Dimension(500, 400));
-
 	}
 
 	private void createNewWindow()
 	{
 		JInternalFrame internal = new JenuInternalFrame(this);
-		internal.setVisible(true);
 		m_desktop.add(internal);
-		m_desktop.moveToFront(internal);
+		internal.setVisible(true);
+		internal.toFront();
+		try
+		{	internal.setSelected(true);
+		} catch (PropertyVetoException e) {}
 	}
 
 	// public JenuSettings getSettings() {
