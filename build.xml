@@ -8,7 +8,7 @@
 	<target name="create_run_jar">
 		<jar destfile="${dir.jarfile}/jenu.jar" filesetmanifest="mergewithoutmain">
 			<manifest>
-				<attribute name="Main-Class" value="jenu.ui.Jenu" />
+				<attribute name="Main-Class" value="jenu.Jenu" />
 				<attribute name="Class-Path" value="." />
 			</manifest>
 			<fileset dir="${dir.jarfile}/bin" />

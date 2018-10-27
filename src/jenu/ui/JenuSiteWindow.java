@@ -6,8 +6,9 @@ import java.awt.BorderLayout;
 
 import javax.swing.AbstractAction;
 import javax.swing.JButton;
-import javax.swing.JInternalFrame;
 import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
@@ -18,39 +19,58 @@ import jenu.worker.JenuThreadListener;
 import jenu.worker.ThreadManager;
 import jenu.worker.WorkingSet;
 
-final class JenuInternalFrame extends JInternalFrame
+/** Main user interface for backend worker.
+ * An instance of this class shows a frame window with a complete UI.
+ * Create it via the static method @see openNewWindow.
+ * Several Windows can coexist.
+ */
+public final class JenuSiteWindow extends JenuFrame
 {
-	static int openFrameCount = 0;
-	static final int xOffset = 30, yOffset = 30;
-	@SuppressWarnings("unused")
-	private Jenu m_owner;
 	private ToolBar m_toolBar = null;
 	private ThreadManager m_tm = null;
 	private JenuResultsTable m_table = null;
 	private URLDisplay m_scroll = null;
 	private StatusBar m_statusBar = null;
 
-	public JenuInternalFrame(Jenu owner)
+	private static int openWindowCount = 0;
+
+	/** Create new site checker window.
+	 * @param title Window title. This is prefixed by "Jenu: ".
+	 *        If null "Site #" is used.
+	 * @return The window just opened */
+	public static JenuSiteWindow openNewWindow(String title)
 	{
-		super("Document " + openFrameCount++,
-			true, // resizeable
-			true, // closeable
-			true, // maximizable
-			true);// iconifyable
-		m_owner = owner;
-		setLocation(xOffset + openFrameCount * 20, yOffset + openFrameCount * 20);
-		setSize(new Dimension(50, 50));
+		if (title == null)
+			synchronized (JenuSiteWindow.class)
+			{	title = "Site " + ++openWindowCount;
+			}
+		JenuSiteWindow window = new JenuSiteWindow(title);
+		window.setVisible(true);
+		return window;
+	}
+
+	private JenuSiteWindow(String title)
+	{
+		super(title);
+
+		setJMenuBar(new Menu());
+
 		m_toolBar = new ToolBar();
 		getContentPane().add(m_toolBar, BorderLayout.NORTH);
+
 		m_statusBar = new StatusBar();
 		getContentPane().add(m_statusBar, BorderLayout.SOUTH);
+
 		m_scroll = new URLDisplay();
 		getContentPane().add(m_scroll, BorderLayout.CENTER);
-		setPreferredSize(new Dimension(400, 200));
+
+		setPreferredSize(new Dimension(500, 400));
+		autoPlacement();
+
 		pack();
 	}
 
-	protected void startRunning()
+	void startRunning()
 	{
 		if (m_tm != null && m_tm.isAlive())
 			m_tm.pauseRunning(false);
@@ -79,7 +99,7 @@ final class JenuInternalFrame extends JInternalFrame
 		}
 	}
 
-	protected void stopRunning()
+	void stopRunning()
 	{
 		if (m_tm != null)
 		{	m_toolBar.setStopping();
@@ -87,7 +107,7 @@ final class JenuInternalFrame extends JInternalFrame
 		}
 	}
 
-	protected void pauseRunning()
+	void pauseRunning()
 	{
 		if (m_tm != null)
 		{	m_toolBar.setPaused();
@@ -101,6 +121,64 @@ final class JenuInternalFrame extends JInternalFrame
 		{
 			super(VERTICAL_SCROLLBAR_ALWAYS, HORIZONTAL_SCROLLBAR_ALWAYS);
 		}
+	}
+
+	private final class Menu extends JMenuBar
+	{
+		public Menu()
+		{
+			super();
+			add(createFileMenu());
+			// add(createViewMenu());
+			// add(createOptionsMenu());
+			// add(createHelpMenu());
+		}
+
+		private JMenu createFileMenu()
+		{
+			JMenu menu = new JMenu("File");
+			menu.add(new AbstractAction("New window")
+				{	public void actionPerformed(ActionEvent e)
+					{	openNewWindow(null);
+					}
+				} );
+			/*menu.add(new AbstractAction("Open...")
+			{	public void actionPerformed(java.awt.event.ActionEvent e)
+				{	OpenURLDialog open = new OpenURLDialog(owner);
+					open.show();
+				}
+			} );*/
+			menu.addSeparator();
+			// menu.addSeparator();
+			menu.add(new AbstractAction("Exit")
+				{	public void actionPerformed(ActionEvent e)
+					{	System.exit(0);
+					}
+				} );
+			return menu;
+		}
+
+		/*private JMenu createOptionsMenu()
+		{
+			JMenu menu = new JMenu("Options");
+			menu.add(new JMenuItem("Preferences..."));
+			return menu;
+		}
+
+		private JMenu createHelpMenu()
+		{
+			JMenu menu = new JMenu("Help");
+			menu.add(new JMenuItem("Help"));
+			return menu;
+		}
+
+		private JMenu createViewMenu()
+		{
+			JMenu menu = new JMenu("View");
+			menu.add(new JCheckBoxMenuItem("Toolbar"));
+			menu.add(new JCheckBoxMenuItem("Status Bar"));
+			return menu;
+		}*/
 	}
 
 	private final class ToolBar extends JToolBar
