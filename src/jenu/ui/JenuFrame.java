@@ -1,28 +1,17 @@
 package jenu.ui;
 
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.util.HashSet;
-
 import javax.swing.JFrame;
 
-/** Base class for *any* Jenu frame windows.
- * This class keeps track of open windows and terminates the application when the last windows has closed.
- * @author mueller
- */
+/** Base class for Jenu frame windows. Adds some sugar. */
 abstract class JenuFrame extends JFrame
 {
 	public JenuFrame(String title)
-	{
-		super("Jenu: " + title);
-		addWindowListener(new WindowAdapter()
-		{	public void windowOpened(WindowEvent e)
-			{	addWindow(JenuFrame.this);
-			}
-			public void windowClosing(WindowEvent e)
-			{	removeWindow(JenuFrame.this);
-			}
-		} );
+	{	super("Jenu: " + title);
+		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+	}
+
+	@Override public void setTitle(String title)
+	{	super.setTitle("Jenu: " + title);
 	}
 
 	private static int openFrameCount = 0;
@@ -30,7 +19,8 @@ abstract class JenuFrame extends JFrame
 	static final int xDisplacement = 20, yDisplacement = 20;
 	static final int maxDisplacements = 10;
 
-	protected void autoPlacement()
+	/** Do placement of frame window automatically avoiding full overlaps when possible. */
+	protected final void autoPlacement()
 	{	int count;
 		synchronized (JenuFrame.class)
 		{	count = openFrameCount++;
@@ -41,17 +31,4 @@ abstract class JenuFrame extends JFrame
 		setLocation(xOffset + (count + overflow) * xDisplacement, yOffset + (count - overflow) * yDisplacement);
 	}
 
-	private static HashSet<JFrame> openWindows = new HashSet<>();
-
-	private static synchronized void addWindow(JFrame window)
-	{	openWindows.add(window);
-	}
-
-	private static synchronized void removeWindow(JFrame window)
-	{	boolean b = openWindows.remove(window);
-		assert b;
-		// Terminate when last window is closed
-		if (openWindows.size() == 0)
-			System.exit(0);
-	}
 }

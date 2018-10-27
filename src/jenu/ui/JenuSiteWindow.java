@@ -64,10 +64,17 @@ public final class JenuSiteWindow extends JenuFrame
 		m_scroll = new URLDisplay();
 		getContentPane().add(m_scroll, BorderLayout.CENTER);
 
-		setPreferredSize(new Dimension(500, 400));
+		setPreferredSize(new Dimension(800, 560));
 		autoPlacement();
 
 		pack();
+	}
+
+	public void dispose()
+	{
+		if (m_tm != null && m_tm.isAlive())
+			m_tm.stopRunning();
+		super.dispose();
 	}
 
 	void startRunning()
@@ -150,9 +157,9 @@ public final class JenuSiteWindow extends JenuFrame
 			} );*/
 			menu.addSeparator();
 			// menu.addSeparator();
-			menu.add(new AbstractAction("Exit")
+			menu.add(new AbstractAction("Close")
 				{	public void actionPerformed(ActionEvent e)
-					{	System.exit(0);
+					{	JenuSiteWindow.this.dispose();
 					}
 				} );
 			return menu;
@@ -189,10 +196,10 @@ public final class JenuSiteWindow extends JenuFrame
 		public ToolBar()
 		{
 			setFloatable(false);
-			add(new JLabel("Site: "));
+			add(new JLabel("Site "));
 			add(m_site = new JTextField(10));
 			addSeparator();
-			add(new JLabel("Start URL: "));
+			add(new JLabel("Start URL "));
 			add(m_url = new JTextField(10));
 			addSeparator();
 			m_run = add(new AbstractAction("Run")
@@ -268,10 +275,10 @@ public final class JenuSiteWindow extends JenuFrame
 		{
 			m_threadsRunning = new ProgressBar(0);
 			m_urlsDone = new ProgressBar(0);
-			add(new JLabel("Threads running: "));
+			add(new JLabel("Threads running "));
 			add(m_threadsRunning);
 			addSeparator();
-			add(new JLabel("Total URLs: "));
+			add(new JLabel("Total URLs "));
 			add(m_urlsDone);
 			setFloatable(false);
 		}
