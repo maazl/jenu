@@ -18,7 +18,13 @@ import java.net.MalformedURLException;
  */
 public final class PageStats
 {
-	/** Absolute URL of this document as String, primary key */
+	/** Dummy page for all excluded link targets. */
+	public static final PageStats EXCLUDED = new PageStats("");
+	static
+	{	EXCLUDED.state = PageState.EXCLUDED;
+	}
+
+	/** Absolute URL of this document as String, primary key, blank for dummy entries. */
 	public final String sUrl;
 	/** Absolute URL as URL class, can be null if sUrl is broken. */
 	public final URL url;
@@ -29,19 +35,24 @@ public final class PageStats
 			throw new NullPointerException();
 		sUrl = strURL;
 		URL url = null;
-		try
-		{	url = new URL(strURL);
-		} catch (MalformedURLException e)
-		{	setError(EventType.URL_error, e.getMessage());
-		}
+		if (strURL.length() != 0)
+			try
+			{	url = new URL(strURL);
+			} catch (MalformedURLException e)
+			{	setError(EventType.URL_error, e.getMessage());
+			}
 		this.url = url;
 	}
 
-	/** What is the task status of this page? */
-	public PageState getRunState()
-	{	return runState;
+	/** What is the task status of this page excluding anchor messages? */
+	public PageState getPageState()
+	{	return state;
 	}
-	private volatile PageState runState = PageState.PENDING;
+	/** What is the task status of this page including anchor messages? */
+	public PageState getTotalState()
+	{	return anchorMessages != null ? PageState.FAILED : state;
+	}
+	private volatile PageState state = PageState.PENDING;
 
 	/** Which error types occurred, if any? */
 	public EnumSet<EventType> getEvents()
@@ -49,11 +60,21 @@ public final class PageStats
 	}
 	private final EnumSet<EventType> events = EnumSet.noneOf(EventType.class);
 
-	/** Err text (mutilline) */
-	public String getMessages()
+	/** Error text (mutilline) excluding anchor messages */
+	public String getPageMessages()
 	{	return messages;
 	}
 	private volatile String messages = null;
+	/** Error text (mutilline) including anchor messages */
+	public String getTotalMessages()
+	{	if (anchorMessages == null)
+			return messages;
+		else if (messages == null)
+			return anchorMessages;
+		else
+			return messages + '\n' + anchorMessages;
+	}
+	private volatile String anchorMessages = null;
 
 	/** Time taken to analyze this document. &lt; 0 =&gt; in progress. */
 	public long getDuration()
@@ -63,14 +84,21 @@ public final class PageStats
 
 	void setRunning()
 	{
-		runState = PageState.RUNNING;
+		state = PageState.RUNNING;
 		duration -= System.currentTimeMillis();
 	}
 
 	void setInfo(EventType type, String message)
 	{
 		events.add(type);
-		if (message != null)
+		if (message == null)
+			return;
+		if (type == EventType.Bad_anchor)
+		{	if (anchorMessages == null)
+				anchorMessages = message;
+			else
+				anchorMessages += '\n' + message;
+		} else
 		{	if (messages == null)
 				messages = message;
 			else
@@ -80,22 +108,22 @@ public final class PageStats
 
 	void setError(EventType type, String message)
 	{
-		runState = PageState.FAILED;
+		state = PageState.FAILED;
 		setInfo(type, message);
 	}
 
 	void setDone()
 	{
 		duration += System.currentTimeMillis();
-		if (runState != PageState.FAILED)
-			runState = PageState.DONE;
+		if (state != PageState.FAILED)
+			state = PageState.DONE;
 		// Check anchors of links added meanwhile
 		linksIn.forEach(this::checkAnchor);
 	}
 
 	void setRetry()
 	{
-		runState = PageState.RETRY;
+		state = PageState.RETRY;
 		// reset state
 		events.clear();
 		messages = "";
@@ -164,7 +192,8 @@ public final class PageStats
 	/** add incoming link, thread-safe! */
 	void addLinkIn(Link l)
 	{	linksIn.add(l);
-		if (runState.compareTo(PageState.DONE) >= 0)
+		l.TargetPage = this;
+		if (state.compareTo(PageState.DONE) >= 0)
 			checkAnchor(l); // page is complete, check anchors immediately
 	}
 	private final Vector<Link> linksIn = new Vector<>();

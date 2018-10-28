@@ -28,6 +28,12 @@ public final class Link
 	/** Source code line */
 	public final int Line;
 
+	PageStats TargetPage = null;
+	/** Target Page including status */
+	public PageStats getTargetPage()
+	{	return TargetPage;
+	}
+
 	/** State of the link's anchor
 	 * @return false: anchor not found */
 	public Boolean getAnchorState()

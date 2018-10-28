@@ -2,6 +2,8 @@ package jenu.ui;
 
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.BorderLayout;
 
 import javax.swing.AbstractAction;
@@ -13,9 +15,11 @@ import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JToolBar;
-
+import javax.swing.SwingUtilities;
+import jenu.ui.JenuResultsTable.Column;
 import jenu.worker.JenuThreadEvent;
 import jenu.worker.JenuThreadListener;
+import jenu.worker.PageStats;
 import jenu.worker.ThreadManager;
 import jenu.worker.WorkingSet;
 
@@ -26,11 +30,11 @@ import jenu.worker.WorkingSet;
  */
 public final class JenuSiteWindow extends JenuFrame
 {
-	private ToolBar m_toolBar = null;
-	private ThreadManager m_tm = null;
+	private final ToolBar m_toolBar;
+	private final JScrollPane m_scroll;
+	private final StatusBar m_statusBar;
 	private JenuResultsTable m_table = null;
-	private URLDisplay m_scroll = null;
-	private StatusBar m_statusBar = null;
+	private ThreadManager m_tm = null;
 
 	private static int openWindowCount = 0;
 
@@ -61,7 +65,7 @@ public final class JenuSiteWindow extends JenuFrame
 		m_statusBar = new StatusBar();
 		getContentPane().add(m_statusBar, BorderLayout.SOUTH);
 
-		m_scroll = new URLDisplay();
+		m_scroll = new JScrollPane(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
 		getContentPane().add(m_scroll, BorderLayout.CENTER);
 
 		setPreferredSize(new Dimension(800, 560));
@@ -77,22 +81,33 @@ public final class JenuSiteWindow extends JenuFrame
 		super.dispose();
 	}
 
-	void startRunning()
+	private void startRunning()
 	{
 		if (m_tm != null && m_tm.isAlive())
 			m_tm.pauseRunning(false);
 		else
 		{	m_tm = new ThreadManager();
 			m_table = new JenuResultsTable(m_tm);
+			m_table.addMouseListener( new MouseAdapter()
+				{	public void mouseClicked(MouseEvent e)
+					{	if (e.getClickCount() >= 2)
+						{	int column = m_table.columnAtPoint(e.getPoint());
+							if (column >= 0)
+							{	int row = m_table.rowAtPoint(e.getPoint());
+								if (row >= 0)
+									doubleClickLink(m_table.getModel().getRow(m_table.convertRowIndexToModel(row)), Column.fromOrdinal(m_table.convertColumnIndexToModel(column)));
+				}	}	}	} );
+
 			m_scroll.setViewportView(m_table);
 
 			m_tm.addThreadListener(m_statusBar);
 			m_tm.addThreadListener(e ->
-				{	if (e.m_threadsRunning + e.m_urlsToStart == 0)
-					{	m_toolBar.setStopped();
-						m_tm = null;
-				}	} );
-
+				{	SwingUtilities.invokeLater(() ->
+						{	if (e.m_threadsRunning + e.m_urlsToStart == 0)
+							{	m_toolBar.setStopped();
+								m_tm = null;
+						}	} );
+				} );
 			WorkingSet ws = new WorkingSet();
 			String url = m_toolBar.getSite();
 			if (url.length() != 0)
@@ -106,7 +121,7 @@ public final class JenuSiteWindow extends JenuFrame
 		}
 	}
 
-	void stopRunning()
+	private void stopRunning()
 	{
 		if (m_tm != null)
 		{	m_toolBar.setStopping();
@@ -114,7 +129,7 @@ public final class JenuSiteWindow extends JenuFrame
 		}
 	}
 
-	void pauseRunning()
+	private void pauseRunning()
 	{
 		if (m_tm != null)
 		{	m_toolBar.setPaused();
@@ -122,11 +137,16 @@ public final class JenuSiteWindow extends JenuFrame
 		}
 	}
 
-	private static class URLDisplay extends JScrollPane
-	{
-		public URLDisplay()
-		{
-			super(VERTICAL_SCROLLBAR_ALWAYS, HORIZONTAL_SCROLLBAR_ALWAYS);
+	private static void doubleClickLink(PageStats rowData, Column col)
+	{	switch (col)
+		{case Links_in:
+			JenuLinksWindow.openNewWindow(rowData, LinkWindowType.LinksIn);
+			break;
+		 case Links_out:
+			JenuLinksWindow.openNewWindow(rowData, LinkWindowType.LinksOut);
+			break;
+		 default:
+			break;
 		}
 	}
 
@@ -285,11 +305,13 @@ public final class JenuSiteWindow extends JenuFrame
 
 		public void threadStateChanged(JenuThreadEvent e)
 		{
-			m_threadsRunning.setMaximum(e.getSource().getWorkingSet().MaxWorkerThreads);
-			m_threadsRunning.setValue(e.m_threadsRunning);
+			SwingUtilities.invokeLater(() ->
+				{	m_threadsRunning.setMaximum(e.getSource().getWorkingSet().MaxWorkerThreads);
+					m_threadsRunning.setValue(e.m_threadsRunning);
 
-			m_urlsDone.setMaximum(e.m_totalUrlsToCheck);
-			m_urlsDone.setValue(e.m_urlsDone);
+					m_urlsDone.setMaximum(e.m_totalUrlsToCheck);
+					m_urlsDone.setValue(e.m_urlsDone);
+				} );
 		}
 
 		private static class ProgressBar extends JProgressBar

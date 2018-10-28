@@ -226,10 +226,13 @@ public final class ThreadManager
 			boolean isIntern = isInternalUrl(stats.sUrl);
 			if (isIntern || Cfg.FollowExternalRedirects)
 				for (Link link : stats.getLinksOut())
-					if ((isIntern || link.Type == Link.REDIRECT) // Allow redirects always because w/o FollowExternalRedirects you won't get that far
-						&& (Cfg.CheckExternalURLs || isInternalUrl(link.Target)) // Do not add external Targets unless enabled.
-						&& !isExcluded(link.Target)) // Exclude beats all
-						addLink(link, stats.getLevel());
+					if ( (isIntern || link.Type == Link.REDIRECT) // Allow redirects always because w/o FollowExternalRedirects you won't get that far
+						&& (Cfg.CheckExternalURLs || isInternalUrl(link.Target)) ) // Do not add external Targets unless enabled.
+					{	if (isExcluded(link.Target)) // Exclude beats all
+							PageStats.EXCLUDED.addLinkIn(link);
+						else
+							addLink(link, stats.getLevel());
+					}
 		}
 
 		// schedule new task?
