@@ -164,7 +164,7 @@ final class PageGrabber extends Thread
 				if (value != null)
 					m_stats.addAnchor(value);
 				value = attributesGet(t.attributeList, "href");
-			} else if (t.tagName.equalsIgnoreCase("img"))
+			} else if (t.tagName.equalsIgnoreCase("img") || t.tagName.equalsIgnoreCase("frame"))
 				value = attributesGet(t.attributeList, "src");
 			else if (t.tagName.equalsIgnoreCase("link"))
 			{	value = attributesGet(t.attributeList, "type");
