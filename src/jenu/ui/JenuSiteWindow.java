@@ -4,7 +4,10 @@ import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.awt.BorderLayout;
+import java.awt.Color;
 
 import javax.swing.AbstractAction;
 import javax.swing.JButton;
@@ -16,9 +19,18 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
+
 import jenu.ui.JenuResultsTable.Column;
+import jenu.ui.component.StackedBar;
+import jenu.ui.component.StackedBarColorModel;
+import jenu.ui.component.StackedBarModel;
+import jenu.ui.component.StackedBarModelEvent;
+import jenu.ui.component.StackedBarModelListener;
+import jenu.worker.JenuPageEvent;
+import jenu.worker.JenuPageListener;
 import jenu.worker.JenuThreadEvent;
 import jenu.worker.JenuThreadListener;
+import jenu.worker.PageState;
 import jenu.worker.PageStats;
 import jenu.worker.ThreadManager;
 import jenu.worker.WorkingSet;
@@ -101,6 +113,7 @@ public final class JenuSiteWindow extends JenuFrame
 			m_scroll.setViewportView(m_table);
 
 			m_tm.addThreadListener(m_statusBar);
+			m_tm.addPageListener(m_statusBar);
 			m_tm.addThreadListener(e ->
 				{	SwingUtilities.invokeLater(() ->
 						{	if (e.m_threadsRunning + e.m_urlsToStart == 0)
@@ -108,6 +121,7 @@ public final class JenuSiteWindow extends JenuFrame
 								m_tm = null;
 						}	} );
 				} );
+			m_statusBar.reset();
 			WorkingSet ws = new WorkingSet();
 			String url = m_toolBar.getSite();
 			if (url.length() != 0)
@@ -287,19 +301,37 @@ public final class JenuSiteWindow extends JenuFrame
 		}
 	}
 
-	private final static class StatusBar extends JToolBar implements JenuThreadListener
+	private final static class StatusBar extends JToolBar implements JenuThreadListener, JenuPageListener
 	{
-		JProgressBar m_threadsRunning, m_urlsDone;
+		JProgressBar m_threadsRunning;
+		StackedBar m_URLsBar;
+		BarModel barModel = new BarModel();
 
 		public StatusBar()
 		{
-			m_threadsRunning = new ProgressBar(0);
-			m_urlsDone = new ProgressBar(0);
+			m_threadsRunning = new JProgressBar(0)
+				{	public String getString()
+					{	return getValue() + "/" + getMaximum();
+					}
+				};
+			m_threadsRunning.setStringPainted(true);
+			m_threadsRunning.setPreferredSize(new Dimension(30,20));
+			//m_urlsDone = new ProgressBar(0);
+			m_URLsBar = new StackedBar(barModel);
+			m_URLsBar.setColorModel(new StackedBarColorModel()
+			{	private final PageState[] values = PageState.values();
+				public Color getForegroundColorAt(int index)
+				{	return Color.WHITE;
+				}
+				public Color getBackgroundColorAt(int index)
+				{	return JenuUIUtils.getStateColor(values[index]);
+				}
+			});
 			add(new JLabel("Threads running "));
 			add(m_threadsRunning);
 			addSeparator();
 			add(new JLabel("Total URLs "));
-			add(m_urlsDone);
+			add(m_URLsBar);
 			setFloatable(false);
 		}
 
@@ -308,23 +340,67 @@ public final class JenuSiteWindow extends JenuFrame
 			SwingUtilities.invokeLater(() ->
 				{	m_threadsRunning.setMaximum(e.getSource().getWorkingSet().MaxWorkerThreads);
 					m_threadsRunning.setValue(e.m_threadsRunning);
-
-					m_urlsDone.setMaximum(e.m_totalUrlsToCheck);
-					m_urlsDone.setValue(e.m_urlsDone);
 				} );
 		}
 
-		private static class ProgressBar extends JProgressBar
+		public void pageChanged(JenuPageEvent e)
 		{
-			public ProgressBar(int max)
-			{
-				super(0, max);
-				setStringPainted(true);
+			SwingUtilities.invokeLater(() -> barModel.pageChanged(e));
+		}
+
+		public void reset()
+		{	barModel.reset();
+		}
+
+		private final static class BarModel implements StackedBarModel, JenuPageListener
+		{
+			@SuppressWarnings("unchecked")
+			private final HashSet<String>[] categories = new HashSet[PageState.values().length];
+			{ for (int i = 0; i < categories.length; ++i)
+					categories[i] = new HashSet<>();
 			}
 
-			public String getString()
+			public int getCount()
+			{	return PageState.values().length;
+			}
+
+			public float getValueAt(int index)
+			{	return categories[index].size();
+			}
+
+			public String getTextAt(int index)
+			{	return null;
+			}
+
+			public void pageChanged(JenuPageEvent e)
 			{
-				return getValue() + "/" + getMaximum();
+				if (!e.isNew)
+				{	if (categories[e.page.getPageState().ordinal()].contains(e.page.sUrl))
+						return; // Nothing changed
+					for (HashSet<String> cat : categories)
+						if (cat.remove(e.page.sUrl))
+							break;
+				}
+				categories[e.page.getPageState().ordinal()].add(e.page.sUrl);
+				fireChanged();
+			}
+
+			public void reset()
+			{	for (HashSet<String> cat : categories)
+					cat.clear();
+			}
+
+			private final ArrayList<StackedBarModelListener> listeners = new ArrayList<>();
+			public void addStackedBarModelListener(StackedBarModelListener l)
+			{	listeners.add(l);
+			}
+			public void removeStackedBarModelListener(StackedBarModelListener l)
+			{	listeners.remove(l);
+			}
+			private void fireChanged()
+			{	StackedBarModelEvent e = new StackedBarModelEvent(this, -1);
+				for (StackedBarModelListener l : listeners)
+					l.dataChanged(e);
 			}
 		}
 	}

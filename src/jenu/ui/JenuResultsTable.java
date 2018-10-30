@@ -4,7 +4,6 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.net.URL;
 import java.util.Date;
-import java.util.Iterator;
 import java.util.Vector;
 
 import javax.swing.SwingUtilities;
@@ -36,7 +35,7 @@ final class JenuResultsTable extends JenuTable
 	{
 		Component c = super.prepareRenderer(renderer, row, column);
 		// state dependent foreground
-		c.setForeground(getRunStateColor(getModel().getRow(convertRowIndexToModel(row)).getTotalState()));
+		c.setForeground(JenuUIUtils.getStateColor(getModel().getRow(convertRowIndexToModel(row)).getTotalState()));
 		return c;
 	}
 
@@ -179,7 +178,7 @@ final class JenuResultsTable extends JenuTable
 			return null; // Keep compiler happy
 		}
 
-		private static <T extends Comparable<T>> int nullComp(T o1, T o2)
+		/*private static <T extends Comparable<T>> int nullComp(T o1, T o2)
 		{
 			if (o1 == o2)
 				return 0;
@@ -204,6 +203,6 @@ final class JenuResultsTable extends JenuTable
 				if (cmp != 0)
 					return cmp;
 			}
-		}
+		}*/
 	}
 }

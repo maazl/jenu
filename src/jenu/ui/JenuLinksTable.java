@@ -37,7 +37,7 @@ final class JenuLinksTable extends JenuTable
 	{
 		Component c = super.prepareRenderer(renderer, row, column);
 		// state dependent foreground
-		c.setForeground(getRunStateColor((PageState)getModel().getValueAt(convertRowIndexToModel(row), Column.Status)));
+		c.setForeground(JenuUIUtils.getStateColor((PageState)getModel().getValueAt(convertRowIndexToModel(row), Column.Status)));
 		return c;
 	}
 
