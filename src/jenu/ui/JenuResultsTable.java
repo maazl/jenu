@@ -133,7 +133,7 @@ final class JenuResultsTable extends JenuTable
 				}
 			 case Title:
 				{	String ret = row.getTitle();
-					return ret != null ? "<html>" + ret + "</html>" : null;
+					return ret != null ? ret : null;
 				}
 			 case Date:
 				return row.getDate();

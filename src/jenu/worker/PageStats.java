@@ -1,6 +1,7 @@
 package jenu.worker;
 
 import java.net.URL;
+
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
@@ -11,6 +12,8 @@ import java.util.Vector;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import java.net.MalformedURLException;
+
+import static jenu.utils.Statics.*;
 
 /**
  * Records information for exactly one HTML page.
@@ -67,12 +70,7 @@ public final class PageStats
 	private volatile String messages = null;
 	/** Error text (mutilline) including anchor messages */
 	public String getTotalMessages()
-	{	if (anchorMessages == null)
-			return messages;
-		else if (messages == null)
-			return anchorMessages;
-		else
-			return messages + '\n' + anchorMessages;
+	{	return strcat(messages, anchorMessages, '\n');
 	}
 	private volatile String anchorMessages = null;
 
@@ -94,16 +92,9 @@ public final class PageStats
 		if (message == null)
 			return;
 		if (type == EventType.Bad_anchor)
-		{	if (anchorMessages == null)
-				anchorMessages = message;
-			else
-				anchorMessages += '\n' + message;
-		} else
-		{	if (messages == null)
-				messages = message;
-			else
-				messages += '\n' + message;
-		}
+			anchorMessages = strcat(anchorMessages, message, '\n');
+		else
+			messages = strcat(messages, message, '\n');
 	}
 
 	void setError(EventType type, String message)
@@ -173,6 +164,9 @@ public final class PageStats
 	}
 	void setTitle(String title)
 	{	this.title = title;
+	}
+	void appendTitle(String title)
+	{	this.title = strcat(this.title, title);
 	}
 	private volatile String title = null;
 
@@ -285,16 +279,16 @@ public final class PageStats
 	public String toString()
 	{
 		String result =
-			"URL         = " + url + "\n" +
-			"status      = " + events + "\n" +
-			"errorString = " + messages + "\n" +
-			"contentType = " + contentType + "\n" +
-			"size        = " + size + "\n" +
-			"title       = " + title + "\n" +
-			"date        = " + date + "\n" +
-			"level       = " + level + "\n" +
-			"linksIn     = " + linksIn + "\n" +
-			"linksOut    = " + linksOut + "\n";
+			"URL         = " + url + '\n' +
+			"status      = " + events + '\n' +
+			"errorString = " + messages + '\n' +
+			"contentType = " + contentType + '\n' +
+			"size        = " + size + '\n' +
+			"title       = " + title + '\n' +
+			"date        = " + date + '\n' +
+			"level       = " + level + '\n' +
+			"linksIn     = " + linksIn + '\n' +
+			"linksOut    = " + linksOut + '\n';
 		return result;
 	}
 }

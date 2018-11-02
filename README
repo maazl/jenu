@@ -48,6 +48,6 @@ button.
 
 NOTES:
 ------
-The html-parser.jar is from
-  http://www.quiotix.com/downloads/html-parser
-and is fully owned by them, and distributable under the GPL.  
+The tagsoup*.jar is from
+  http://vrici.lojban.org/~cowan/XML/tagsoup/
+and distributable under Apache License, Version 2.0.
