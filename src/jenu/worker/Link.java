@@ -10,6 +10,8 @@ public final class Link
 	public final static String CSS = "CSS";
 	/** Virtual link from HTTP 30x redirect or directory URL */
 	public final static String REDIRECT = "REDIRECT";
+	/** Link from directory scan */
+	public final static String DIRECTORY = "DIRECTORY";
 
 	/** Type or origin of this link, i.e. name of the tag, i.e. "a" or "img", "link" or "meta".
 	 * Special values:
@@ -44,6 +46,12 @@ public final class Link
 	}
 	private volatile Boolean AnchorState = null;
 
+	/** Create Link
+	 * @param type Link type. Either an HTML tag name ore one of the constants in this class.
+	 * @param target Raw target URL as found in the document (relative or absolute).
+	 * @param source Source URL.
+	 * @param line Source code line of the target URL in the source URL or -1 if not available..
+	 */
 	Link(String type, String target, URL source, int line)
 	{	Type = type;
 		OriginalTarget = target;

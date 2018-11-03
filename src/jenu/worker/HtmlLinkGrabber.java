@@ -1,0 +1,131 @@
+package jenu.worker;
+
+import java.io.IOException;
+import java.io.InputStream;
+
+import org.ccil.cowan.tagsoup.Parser;
+import org.xml.sax.Attributes;
+import org.xml.sax.InputSource;
+import org.xml.sax.Locator;
+import org.xml.sax.SAXException;
+import org.xml.sax.XMLReader;
+import org.xml.sax.helpers.DefaultHandler;
+
+final class HtmlLinkGrabber extends DefaultHandler
+{
+	public static void handleHTML(PageStats stats, InputStream is) throws IOException
+	{
+		try
+		{	XMLReader p = new Parser();
+			p.setContentHandler(new HtmlLinkGrabber(stats));
+			InputSource s = new InputSource();
+			s.setSystemId(stats.sUrl);
+			s.setByteStream(is);
+			p.parse(s);
+		} catch (SAXException e)
+		{	stats.setError(EventType.HTML_parse_error, e.toString());
+		}
+	}
+
+	private final PageStats stats;
+
+	public HtmlLinkGrabber(PageStats stats)
+	{	this.stats = stats;
+	}
+
+	private enum AtTag
+	{	TITLE,
+		STYLE,
+	}
+	private AtTag at;
+	private int start;
+	private final StringBuilder sb = new StringBuilder();
+	private CssLinkGrabber cssGrabber;
+
+	@Override public void startElement(String uri, String localName, String qName, Attributes atts) throws SAXException
+	{
+		at = null;
+		sb.setLength(0);
+		start = locator.getLineNumber();
+
+		String target = null;
+		if (localName.equalsIgnoreCase("a"))
+		{	target = attributesGet(atts, "name");
+			if (target != null)
+				stats.addAnchor(target);
+			target = attributesGet(atts, "href");
+		} else if (localName.equalsIgnoreCase("img") || localName.equalsIgnoreCase("frame"))
+			target = attributesGet(atts, "src");
+		else if (localName.equalsIgnoreCase("link"))
+			target = attributesGet(atts, "href");
+		else if (localName.equalsIgnoreCase("meta"))
+		{	if ("refresh".equalsIgnoreCase(attributesGet(atts, "http-equiv")))
+			{	target = attributesGet(atts, "content");
+				int p = target.toLowerCase().indexOf("url=");
+				if (p < 0)
+					return;
+				target = target.substring(p + 4).trim();
+			} else
+				return;
+		} else if (localName.equalsIgnoreCase("title"))
+		{	at = AtTag.TITLE;
+			return;
+		} else if (localName.equalsIgnoreCase("style"))
+		{	at = AtTag.STYLE;
+			return;
+		} else
+			return; //tag not relevant
+
+		// Handle links
+		if (target != null && target.length() != 0)
+		{	Link link = new Link(localName.toLowerCase(), target, stats.url, getLine());
+			stats.addLinkOut(link);
+		}
+	}
+
+	@Override public void characters(char[] c, int start, int length) throws SAXException
+	{	if (at != null)
+			sb.append(c, start, length);
+	}
+
+	@Override public void endElement(String arg0, String arg1, String arg2) throws SAXException
+	{	if (at == null)
+			return;
+		switch (at)
+		{case TITLE:
+			stats.setTitle(sb.toString());
+			break;
+		 case STYLE:
+			{	if (cssGrabber == null)
+					cssGrabber = new CssLinkGrabber(stats);
+				cssGrabber.handleCSS(sb.toString(), start);
+			}
+		}
+		at = null;
+		sb.setLength(0);
+	}
+
+	@Override public void endDocument() throws SAXException
+	{	stats.setLines(locator.getLineNumber());
+	}
+
+	private static String attributesGet(Attributes attributes, String name)
+	{
+		for (int i = 0; i < attributes.getLength(); i++)
+		{	String qn = attributes.getQName(i);
+			if (qn.equalsIgnoreCase(name))
+				return attributes.getValue(i);
+		}
+		return null;
+	}
+
+	private Locator locator = null;
+
+	private int getLine()
+	{	return locator != null ? locator.getLineNumber() : -1;
+	}
+
+	@Override public void setDocumentLocator(final Locator locator)
+	{	this.locator = locator;
+	}
+}

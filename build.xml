@@ -4,6 +4,7 @@
 	<!--ANT 1.7 is required                                        -->
 	<!--define folder properties-->
 	<property name="dir.buildfile" value="." />
+	<property name="dir.workspace" value="/home/mueller/workspace" />
 	<property name="dir.jarfile" value="${dir.buildfile}" />
 	<target name="create_run_jar">
 		<jar destfile="${dir.jarfile}/jenu.jar" filesetmanifest="mergewithoutmain">
@@ -13,6 +14,8 @@
 			</manifest>
 			<fileset dir="${dir.jarfile}/bin" />
 			<zipfileset excludes="META-INF/*.SF" src="${dir.jarfile}/lib/tagsoup-1.2.1.jar" />
+			<zipfileset excludes="META-INF/*.SF" src="${dir.jarfile}/lib/cssparser-0.9.26-sources.jar" />
+			<zipfileset excludes="META-INF/*.SF" src="${dir.jarfile}/lib/sac.jar" />
 		</jar>
 	</target>
 </project>

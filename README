@@ -27,11 +27,11 @@ You need Java Runtime Version 8 or later to run it.
 
 put a URL in the window, such as http://www.<mysite>.com.
 
-Currently, you must put the 'http://', it doesn't assume it for you.  
+Currently, you must put the 'http://', it doesn't assume it for you.
 
 TODO:
 -----
-There is much to do, but the basic infrastructure is there.  
+There is much to do, but the basic infrastructure is there.
 
 * Create a nice 'Preferences' window which includes:
    * # of concurrent threads
@@ -51,3 +51,9 @@ NOTES:
 The tagsoup*.jar is from
   http://vrici.lojban.org/~cowan/XML/tagsoup/
 and distributable under Apache License, Version 2.0.
+
+cssparser is freely available and without charge and is licenced
+under the terms of the Apache License, Version 2.0.
+
+The sac.jar file is distributable under W3C® Software Notice and License.
+See lib/sac.COPYRIGHT.html.

@@ -1,18 +1,11 @@
 package jenu.worker;
 
 import java.net.URL;
+import java.net.FileNameMap;
 import java.net.HttpURLConnection;
 import java.net.URLConnection;
 import java.io.*;
 import java.util.*;
-
-import org.ccil.cowan.tagsoup.Parser;
-import org.xml.sax.Attributes;
-import org.xml.sax.InputSource;
-import org.xml.sax.Locator;
-import org.xml.sax.SAXException;
-import org.xml.sax.XMLReader;
-import org.xml.sax.helpers.DefaultHandler;
 
 /**
  * Grabs pages from the Internet, parses them, and finds embedded links.
@@ -22,6 +15,19 @@ final class PageGrabber extends Thread
 	private final ThreadManager m_manager;
 	PageStats m_stats = null;
 	private InputStream m_input;
+
+	static
+	{	// Work around for incomplete Mime types in Java.
+		// Add further mime types without loosing the standard content from the JVM.
+		URLConnection.setFileNameMap(new FileNameMap()
+			{	private final FileNameMap base = URLConnection.getFileNameMap();
+				@Override public String getContentTypeFor(String fileName)
+				{	if (fileName.endsWith(".css") || fileName.endsWith(".CSS"))
+						return "text/css";
+					return base.getContentTypeFor(fileName);
+				}
+			} );
+	}
 
 	public PageGrabber(ThreadManager manager)
 	{
@@ -94,10 +100,11 @@ final class PageGrabber extends Thread
 	{
 		switch (String.valueOf(m_stats.getContentType()))
 		{case "text/html":
-			handleHTML();
+			HtmlLinkGrabber.handleHTML(m_stats, m_input);
 			return;
-			//case "text/css":
-			// TODO: parse css
+		 case "text/css":
+			new CssLinkGrabber(m_stats).handleCSS(m_input);
+			return;
 		 case "text/plain":
 			// Work around for inability to identify directories by FileUrlConnection.
 			if (m_stats.sUrl.startsWith("file:"))
@@ -113,106 +120,14 @@ final class PageGrabber extends Thread
 		}
 	}
 
-	private void handleHTML() throws IOException
-	{
-		try
-		{	XMLReader p = new Parser();
-			p.setContentHandler(new HtmlLinkGrabber());
-			InputSource s = new InputSource();
-			s.setSystemId(m_stats.sUrl);
-			s.setByteStream(m_input);
-			p.parse(s);
-		} catch (SAXException e)
-		{	m_stats.setError(EventType.HTML_parse_error, e.toString());
-		}
-	}
-
 	private void handleDirectory() throws IOException
 	{
 		String s = new String(m_input.readAllBytes());
 		int last = 0;
 		int p;
 		while ((p = s.indexOf('\n', last)) > 0)
-		{	m_stats.addLinkOut(new Link("a", s.substring(last, p), m_stats.url, 0));
+		{	m_stats.addLinkOut(new Link(Link.DIRECTORY, s.substring(last, p), m_stats.url, 0));
 			last = p + 1;
-		}
-	}
-
-
-	final class HtmlLinkGrabber extends DefaultHandler
-	{
-		private boolean atTitle = false;
-
-		@Override public void startElement(String uri, String localName, String qName, Attributes atts) throws SAXException
-		{
-			atTitle = false;
-			String value = null;
-			String type = null;
-			if (localName.equalsIgnoreCase("a"))
-			{	value = attributesGet(atts, "name");
-				if (value != null)
-					m_stats.addAnchor(value);
-				value = attributesGet(atts, "href");
-			} else if (localName.equalsIgnoreCase("img") || localName.equalsIgnoreCase("frame"))
-				value = attributesGet(atts, "src");
-			else if (localName.equalsIgnoreCase("link"))
-			{	value = attributesGet(atts, "type");
-				if ("text/css".equals(value))
-					type = "link.css";
-				value = attributesGet(atts, "href");
-			} else if (localName.equalsIgnoreCase("meta"))
-			{	if ("refresh".equalsIgnoreCase(attributesGet(atts, "http-equiv")))
-				{	value = attributesGet(atts, "content");
-					int p = value.toLowerCase().indexOf("url=");
-					if (p < 0)
-						return;
-					value = value.substring(p + 4).trim();
-				} else
-					return;
-			} else if (localName.equalsIgnoreCase("title"))
-			{	atTitle = true;
-				return;
-			} else
-				return; //tag not relevant
-
-			// Handle links
-			if (value != null && value.length() != 0)
-			{	Link link = new Link(type != null ? type : localName.toLowerCase(), value, m_stats.url, getLine());
-				m_stats.addLinkOut(link);
-			}
-		}
-
-		@Override public void characters(char[] c, int start, int length) throws SAXException
-		{	if (atTitle)
-				m_stats.appendTitle(new String(c, start, length));
-		}
-
-		@Override public void endElement(String arg0, String arg1, String arg2) throws SAXException
-		{	atTitle = false;
-		}
-
-		@Override public void endDocument() throws SAXException
-		{	m_stats.setLines(locator.getLineNumber());
-		}
-
-		private String attributesGet(Attributes attributes, String name)
-		{
-			for (int i = 0; i < attributes.getLength(); i++)
-			{	String qn = attributes.getQName(i);
-				if (qn.equalsIgnoreCase(name))
-					return attributes.getValue(i);
-			}
-			return null;
-		}
-
-		private Locator locator = null;
-
-		private int getLine()
-		{	return locator != null ? locator.getLineNumber() : -1;
-		}
-
-		@Override public void setDocumentLocator(final Locator locator)
-		{	this.locator = locator;
 		}
 	}
 }
