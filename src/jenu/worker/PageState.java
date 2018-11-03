@@ -7,7 +7,7 @@ public enum PageState
 	RUNNING,
 	EXCLUDED,
 	DONE,
-	WARNING, // currently unused
+	WARNING,
 	FAILED;
 
 	/** Is the current state considered to be final, i.e. no further processing required? */

@@ -8,16 +8,18 @@ import org.xml.sax.Attributes;
 import org.xml.sax.InputSource;
 import org.xml.sax.Locator;
 import org.xml.sax.SAXException;
+import org.xml.sax.SAXParseException;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.DefaultHandler;
 
 final class HtmlLinkGrabber extends DefaultHandler
 {
-	public static void handleHTML(PageStats stats, InputStream is) throws IOException
+	public void handleHTML(InputStream is) throws IOException
 	{
 		try
 		{	XMLReader p = new Parser();
-			p.setContentHandler(new HtmlLinkGrabber(stats));
+			p.setContentHandler(this);
+			p.setErrorHandler(this);
 			InputSource s = new InputSource();
 			s.setSystemId(stats.sUrl);
 			s.setByteStream(is);
@@ -53,8 +55,12 @@ final class HtmlLinkGrabber extends DefaultHandler
 		{	target = attributesGet(atts, "name");
 			if (target != null)
 				stats.addAnchor(target);
+			if (!stats.isInternal) // only check for anchors at external pages.
+				return;
 			target = attributesGet(atts, "href");
-		} else if (localName.equalsIgnoreCase("img") || localName.equalsIgnoreCase("frame"))
+		} else if (!stats.isInternal) // only check for anchors at external pages.
+			return;
+		else if (localName.equalsIgnoreCase("img") || localName.equalsIgnoreCase("frame"))
 			target = attributesGet(atts, "src");
 		else if (localName.equalsIgnoreCase("link"))
 			target = attributesGet(atts, "href");
@@ -117,6 +123,23 @@ final class HtmlLinkGrabber extends DefaultHandler
 				return attributes.getValue(i);
 		}
 		return null;
+	}
+
+	@Override public void warning(SAXParseException ex) throws SAXException
+	{	if (stats.isInternal) // no errors in external pages
+			stats.setWarning(EventType.HTML_parse_error, formatException(ex));
+	}
+
+	@Override public void error(SAXParseException ex) throws SAXException
+	{	if (stats.isInternal) // no errors in external pages
+			stats.setError(EventType.HTML_parse_error, formatException(ex));
+	}
+
+	private static String formatException(SAXParseException ex)
+	{	StringBuilder sb = new StringBuilder();
+		sb.append('@').append(ex.getLineNumber()).append(':').append(ex.getColumnNumber()).append(' ')
+			.append(ex.getMessage());
+		return sb.toString();
 	}
 
 	private Locator locator = null;

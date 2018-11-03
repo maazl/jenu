@@ -103,7 +103,8 @@ final class PageGrabber extends Thread
 			new HtmlLinkGrabber(m_stats).handleHTML(m_input);
 			return;
 		 case "text/css":
-			new CssLinkGrabber(m_stats).handleCSS(m_input);
+			if (m_stats.isInternal)
+				new CssLinkGrabber(m_stats).handleCSS(m_input);
 			return;
 		 case "text/plain":
 			// Work around for inability to identify directories by FileUrlConnection.

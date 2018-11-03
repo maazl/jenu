@@ -22,7 +22,7 @@ import static jenu.utils.Statics.*;
 public final class PageStats
 {
 	/** Dummy page for all excluded link targets. */
-	public static final PageStats EXCLUDED = new PageStats("");
+	public static final PageStats EXCLUDED = new PageStats("", false);
 	static
 	{	EXCLUDED.state = PageState.EXCLUDED;
 	}
@@ -31,8 +31,10 @@ public final class PageStats
 	public final String sUrl;
 	/** Absolute URL as URL class, can be null if sUrl is broken. */
 	public final URL url;
+	/** Internal URL */
+	public final boolean isInternal;
 
-	PageStats(String strURL)
+	PageStats(String strURL, boolean internal)
 	{
 		if (strURL == null)
 			throw new NullPointerException();
@@ -45,6 +47,7 @@ public final class PageStats
 			{	setError(EventType.URL_error, e.getMessage());
 			}
 		this.url = url;
+		isInternal = internal;
 	}
 
 	/** What is the task status of this page excluding anchor messages? */
@@ -95,6 +98,12 @@ public final class PageStats
 			anchorMessages = strcat(anchorMessages, message, '\n');
 		else
 			messages = strcat(messages, message, '\n');
+	}
+
+	void setWarning(EventType type, String message)
+	{
+		state = PageState.WARNING;
+		setInfo(type, message);
 	}
 
 	void setError(EventType type, String message)

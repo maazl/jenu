@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.io.StringReader;
 
 import org.w3c.css.sac.CSSException;
+import org.w3c.css.sac.CSSParseException;
 import org.w3c.css.sac.InputSource;
 import org.w3c.css.sac.LexicalUnit;
 import org.w3c.css.sac.Locator;
@@ -52,5 +53,32 @@ final class CssLinkGrabber extends HandlerBase
 	@Override public void property(String name, LexicalUnit value, boolean important, Locator locator)
 	{	if (value.getLexicalUnitType() == LexicalUnit.SAC_URI)
 			stats.addLinkOut(new Link(Link.CSS, value.getStringValue(), stats.url, locator.getLineNumber() + offset));
+	}
+
+	@Override
+	public void endDocument(InputSource source) throws CSSException
+	{
+
+		// TODO Auto-generated method stub
+		super.endDocument(source);
+	}
+
+	@Override public void warning(CSSParseException ex) throws CSSException
+	{	stats.setWarning(EventType.CSS_parse_error, formatException(ex));
+	}
+
+	@Override public void error(CSSParseException ex) throws CSSException
+	{	stats.setError(EventType.CSS_parse_error, formatException(ex));
+	}
+
+	@Override public void fatalError(CSSParseException ex) throws CSSException
+	{	throw ex;
+	}
+
+	private String formatException(CSSParseException ex)
+	{	StringBuilder sb = new StringBuilder();
+		sb.append('@').append(ex.getLineNumber() + offset).append(':').append(ex.getColumnNumber()).append(' ')
+			.append(ex.getMessage());
+		return sb.toString();
 	}
 }

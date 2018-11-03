@@ -135,7 +135,7 @@ public final class ThreadManager
 		PageStats stats = urlsAll.get(link.Target);
 		boolean isNew = stats == null;
 		if (isNew)
-		{	stats = new PageStats(link.Target);
+		{	stats = new PageStats(link.Target, isInternalUrl(link.Target));
 			urlsAll.put(link.Target, stats);
 			statsToStart.add(stats);
 		}
@@ -223,10 +223,9 @@ public final class ThreadManager
 			++statsDone;
 			firePageEvent(stats, false);
 
-			boolean isIntern = isInternalUrl(stats.sUrl);
-			if (isIntern || Cfg.FollowExternalRedirects)
+			if (stats.isInternal || Cfg.FollowExternalRedirects)
 				for (Link link : stats.getLinksOut())
-					if ( (isIntern || link.Type == Link.REDIRECT) // Allow redirects always because w/o FollowExternalRedirects you won't get that far
+					if ( (stats.isInternal || link.Type == Link.REDIRECT) // Allow redirects always because w/o FollowExternalRedirects you won't get that far
 						&& (Cfg.CheckExternalURLs || isInternalUrl(link.Target)) ) // Do not add external Targets unless enabled.
 					{	if (isExcluded(link.Target)) // Exclude beats all
 							PageStats.EXCLUDED.addLinkIn(link);
