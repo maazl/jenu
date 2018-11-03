@@ -66,17 +66,17 @@ final class PageGrabber extends Thread
 		 case HttpURLConnection.HTTP_MOVED_TEMP:
 		 case 307: // missing in HttpURLConnection
 			location = connection.getHeaderField("Location");
-			m_stats.setInfo(EventType.Redirect, connection.getResponseMessage() + ' ' + location);
+			m_stats.setInfo(EventType.Redirect, connection.getResponseCode() + " " + connection.getResponseMessage() + ' ' + location);
 			m_stats.addLinkOut(new Link(Link.REDIRECT, location, m_stats.url, 0));
 			break;
 		 case HttpURLConnection.HTTP_MOVED_PERM:
 		 case 308: // missing in HttpURLConnection
 			location = connection.getHeaderField("Location");
-			m_stats.setError(EventType.Redirect, connection.getResponseMessage() + ' ' + location);
+			m_stats.setError(EventType.Redirect, connection.getResponseCode() + " " + connection.getResponseMessage() + ' ' + location);
 			m_stats.addLinkOut(new Link(Link.REDIRECT, location, m_stats.url, 0));
 			break;
 		 default:
-			m_stats.setError(EventType.HTTP_error, connection.getResponseMessage());
+			m_stats.setError(EventType.HTTP_error, connection.getResponseCode() + " " + connection.getResponseMessage());
 		}
 	}
 
@@ -100,7 +100,7 @@ final class PageGrabber extends Thread
 	{
 		switch (String.valueOf(m_stats.getContentType()))
 		{case "text/html":
-			HtmlLinkGrabber.handleHTML(m_stats, m_input);
+			new HtmlLinkGrabber(m_stats).handleHTML(m_input);
 			return;
 		 case "text/css":
 			new CssLinkGrabber(m_stats).handleCSS(m_input);
