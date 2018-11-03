@@ -126,9 +126,6 @@ public final class JenuSiteWindow extends JenuFrame
 			String url = m_toolBar.getSite();
 			if (url.length() != 0)
 				ws.Sites.add(url);
-			url = m_toolBar.getURL();
-			if (url.length() != 0)
-				ws.StartingPoints.add(url);
 
 			m_toolBar.setRunning();
 			m_tm.start(ws);
@@ -225,16 +222,13 @@ public final class JenuSiteWindow extends JenuFrame
 	private final class ToolBar extends JToolBar
 	{
 		final JButton m_run, m_stop, m_pause;
-		final JTextField m_site, m_url;
+		final JTextField m_site;
 
 		public ToolBar()
 		{
 			setFloatable(false);
 			add(new JLabel("Site "));
 			add(m_site = new JTextField(10));
-			addSeparator();
-			add(new JLabel("Start URL "));
-			add(m_url = new JTextField(10));
 			addSeparator();
 			m_run = add(new AbstractAction("Run")
 				{	public void actionPerformed(ActionEvent e)
@@ -259,18 +253,12 @@ public final class JenuSiteWindow extends JenuFrame
 			return m_site.getText();
 		}
 
-		public String getURL()
-		{
-			return m_url.getText();
-		}
-
 		public void setRunning()
 		{
 			m_run.setEnabled(false);
 			m_stop.setEnabled(true);
 			m_pause.setEnabled(true);
 			m_site.setEnabled(false);
-			m_url.setEnabled(false);
 		}
 
 		public void setPaused()
@@ -279,7 +267,6 @@ public final class JenuSiteWindow extends JenuFrame
 			m_stop.setEnabled(true);
 			m_pause.setEnabled(false);
 			m_site.setEnabled(false);
-			m_url.setEnabled(false);
 		}
 
 		public void setStopping()
@@ -288,7 +275,6 @@ public final class JenuSiteWindow extends JenuFrame
 			m_stop.setEnabled(false);
 			m_pause.setEnabled(false);
 			m_site.setEnabled(false);
-			m_url.setEnabled(false);
 		}
 
 		public void setStopped()
@@ -297,7 +283,6 @@ public final class JenuSiteWindow extends JenuFrame
 			m_stop.setEnabled(false);
 			m_pause.setEnabled(false);
 			m_site.setEnabled(true);
-			m_url.setEnabled(true);
 		}
 	}
 
