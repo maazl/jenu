@@ -315,7 +315,8 @@ public final class JenuSiteWindow extends JenuFrame
 					}
 				};
 			m_threadsRunning.setStringPainted(true);
-			m_threadsRunning.setPreferredSize(new Dimension(30,20));
+			m_threadsRunning.setMaximumSize(new Dimension(100,30));
+			//m_threadsRunning.setPreferredSize(new Dimension(30,20));
 			//m_urlsDone = new ProgressBar(0);
 			m_URLsBar = new StackedBar(barModel);
 			m_URLsBar.setColorModel(new StackedBarColorModel()
