@@ -97,8 +97,11 @@ final class PageGrabber extends Thread
 	}
 
 	private void handleContent(String mimeType) throws IOException
-	{
-		switch (String.valueOf(m_stats.getContentType()))
+	{	String type = m_stats.getContentType();
+		int p = type.indexOf(';');
+		if (p >= 0)
+			type = type.substring(0, p);
+		switch (type)
 		{case "text/html":
 			new HtmlLinkGrabber(m_stats).handleHTML(m_input);
 			return;
