@@ -4,9 +4,10 @@
 	<!--ANT 1.7 is required                                        -->
 	<!--define folder properties-->
 	<property name="dir.buildfile" value="." />
-	<property name="dir.workspace" value="/home/mueller/workspace" />
+	<property name="dir.src" value="src" />
+	<property name="dir.bin" value="bin" />
 	<property name="dir.jarfile" value="${dir.buildfile}" />
-	<target name="create_run_jar">
+	<target name="create_run_jar" depends="build">
 		<jar destfile="${dir.jarfile}/jenu.jar" filesetmanifest="mergewithoutmain">
 			<manifest>
 				<attribute name="Main-Class" value="jenu.Jenu" />
@@ -14,8 +15,23 @@
 			</manifest>
 			<fileset dir="${dir.jarfile}/bin" />
 			<zipfileset excludes="META-INF/*.SF" src="${dir.jarfile}/lib/tagsoup-1.2.1.jar" />
-			<zipfileset excludes="META-INF/*.SF" src="${dir.jarfile}/lib/cssparser-0.9.26-sources.jar" />
+			<zipfileset excludes="META-INF/*.SF" src="${dir.jarfile}/lib/cssparser-0.9.26.jar" />
 			<zipfileset excludes="META-INF/*.SF" src="${dir.jarfile}/lib/sac.jar" />
 		</jar>
+	</target>
+	<target name="build">
+		<mkdir dir="${dir.bin}"/>
+		<javac
+			srcdir="${dir.src}"
+			destdir="${dir.bin}"
+			source="1.8"
+			target="1.8"
+			deprecation="off">
+			<classpath>
+				<pathelement location="${dir.jarfile}/lib/tagsoup-1.2.1.jar"/>
+				<pathelement location="${dir.jarfile}/lib/cssparser-0.9.26.jar"/>
+				<pathelement location="${dir.jarfile}/lib/sac.jar"/>
+			</classpath>
+		</javac>
 	</target>
 </project>
