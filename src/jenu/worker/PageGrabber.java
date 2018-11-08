@@ -97,8 +97,11 @@ final class PageGrabber extends Thread
 	}
 
 	private void handleContent(String mimeType) throws IOException
-	{
-		switch (String.valueOf(m_stats.getContentType()))
+	{	String type = m_stats.getContentType();
+		int p = type.indexOf(';');
+		if (p >= 0)
+			type = type.substring(0, p);
+		switch (type)
 		{case "text/html":
 			new HtmlLinkGrabber(m_stats).handleHTML(m_input);
 			return;
@@ -123,12 +126,20 @@ final class PageGrabber extends Thread
 
 	private void handleDirectory() throws IOException
 	{
-		String s = new String(m_input.readAllBytes());
+		String s = readAllInputAsString();
 		int last = 0;
 		int p;
 		while ((p = s.indexOf('\n', last)) > 0)
 		{	m_stats.addLinkOut(new Link(Link.DIRECTORY, s.substring(last, p), m_stats.url, 0));
 			last = p + 1;
 		}
+	}
+
+	private String readAllInputAsString() throws IOException
+	{	ByteArrayOutputStream os = new ByteArrayOutputStream();
+		byte[] buffer = new byte[0xFFFF];
+		for (int len = m_input.read(buffer); len != -1; len = m_input.read(buffer))
+			os.write(buffer, 0, len);
+		return os.toString();
 	}
 }

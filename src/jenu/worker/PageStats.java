@@ -213,13 +213,12 @@ public final class PageStats
 	 * @return old value
 	 */
 	int reduceLevel(int depth)
-	{	int old = level.intValue();
-		while (old > depth)
-		{ int old2 = old;
-			old = level.compareAndExchange(old, depth);
-			if (old2 == old)
+	{	int old;
+		do
+		{	old = level.intValue();
+			if (old >= depth)
 				break;
-		}
+		} while (!level.compareAndSet(old, depth));
 		return old;
 	}
 	private final AtomicInteger level = new AtomicInteger(Integer.MAX_VALUE);
