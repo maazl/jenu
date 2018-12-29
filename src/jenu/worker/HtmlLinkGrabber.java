@@ -61,6 +61,8 @@ final class HtmlLinkGrabber extends DefaultHandler
 			if (!stats.isInternal) // only check for anchors at external pages.
 				return;
 			target = attributesGet(atts, "href");
+			if (target.startsWith("javascript:") || target.startsWith("mailto:"))
+				target = null; // exclude JavaScript & mail URLs
 		} else if (!stats.isInternal) // only check for anchors at external pages.
 			return;
 		else if (localName.equalsIgnoreCase("img") || localName.equalsIgnoreCase("frame"))
