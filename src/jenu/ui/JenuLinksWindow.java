@@ -1,13 +1,18 @@
 package jenu.ui;
 
-import java.awt.Dimension;
-import java.util.Collection;
-import java.util.HashMap;
 import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.lang.ref.WeakReference;
+import java.util.HashMap;
 
 import javax.swing.JScrollPane;
-import jenu.worker.Link;
-import jenu.worker.PageStats;
+import javax.swing.ScrollPaneConstants;
+
+import jenu.model.Page;
+import jenu.ui.viewmodel.ALinkView;
+import jenu.ui.viewmodel.LinksInView;
+import jenu.ui.viewmodel.LinksOutView;
+import jenu.worker.ThreadManager;
 
 /** View a list of links of a certain document
  */
@@ -15,61 +20,52 @@ public final class JenuLinksWindow extends JenuFrame
 {
 	private final JenuLinksTable m_table;
 	private final JScrollPane m_scroll;
+	private final WeakReference<ThreadManager> m_tm;
 
-	/** List of open windows by title */
+	/** List of open links windows by title */
 	private final static HashMap<String,JenuLinksWindow> m_linkWindows = new HashMap<>();
 
-	/** Create new site checker window.
-	 * @param title Window title. This is prefixed by "Jenu: "
-	 * @param links Data to view.
-	 * @return The window just opened or an existing one with the same scope.
-	 * @remarks When an existing window is shown a refresh event is sent to the window. */
-	public static JenuLinksWindow openNewWindow(PageStats stats, LinkWindowType type)
-	{	String title;
-		Collection<Link> links;
-		if (type == LinkWindowType.LinksIn)
-		{	title = "Links to ";
-			links = stats.getLinksIn();
-		} else
-		{	title = "Links from ";
-			links = stats.getLinksOut();
-		}
-		title += stats.sUrl;
+	/** Open link view.
+	 * @param tm Backend model. Might be null, when the model is already immutable, i.e. processing has completed.
+	 * @param page Page which links should be shown.
+	 * @param type Inbound or outbound links.
+	 * @return The window just opened or an existing one with the same scope. */
+	public static JenuLinksWindow openWindow(ThreadManager tm, Page page, LinkWindowType type)
+	{	String title = (type == LinkWindowType.LinksIn ? "Links to " : "Links from ") + page.sUrl;
 		JenuLinksWindow window = m_linkWindows.get(title);
 		if (window == null) // cache miss
-		{	if (links.isEmpty())
-				return null; // nothing to show
-			window = new JenuLinksWindow(title, links);
+		{	window = new JenuLinksWindow(tm, title, type == LinkWindowType.LinksOut ? new LinksOutView(page) : new LinksInView(page));
 			m_linkWindows.put(title, window);
-		} else
-		{	if (links.isEmpty()) // Link list now empty?
-			{	window.dispose(); // should not happen, however discard window.
-				return null;
-			}
-			window.m_table.updateData(links);
 		}
 		window.setVisible(true);
 		return window;
 	}
 
-	private JenuLinksWindow(String title, Collection<Link> links)
+	private JenuLinksWindow(ThreadManager tm, String title, ALinkView model)
 	{
 		super(title);
-
-		m_scroll = new JScrollPane(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
+		m_scroll = new JScrollPane(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS);
 		getContentPane().add(m_scroll, BorderLayout.CENTER);
-		m_table = new JenuLinksTable(links);
+		m_table = new JenuLinksTable(model);
 		m_scroll.setViewportView(m_table);
 
 		setPreferredSize(new Dimension(500, 560));
 		autoPlacement();
 
 		pack();
+
+		m_tm = new WeakReference<ThreadManager>(tm);
+		if (tm != null)
+			tm.addPageListener(model);
+		model.refresh(); // initial content
 	}
 
 	@Override	public void dispose()
 	{	JenuLinksWindow ret = m_linkWindows.remove(getTitle());
 		assert ret == this;
+		ThreadManager tm = m_tm.get();
+		if (tm != null)
+			tm.removePageListener(m_table.getModel());
 		super.dispose();
 	}
 }

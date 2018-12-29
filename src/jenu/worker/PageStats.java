@@ -1,132 +1,68 @@
 package jenu.worker;
 
 import java.net.URL;
-
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
-import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Vector;
-import java.util.concurrent.atomic.AtomicInteger;
 
-import java.net.MalformedURLException;
+import jenu.model.Link;
+import jenu.model.Message;
+import jenu.model.MessageType;
+import jenu.model.Page;
+import jenu.model.PageState;
+import jenu.model.Severity;
 
-import static jenu.utils.Statics.*;
 
 /**
- * Records information for exactly one HTML page.
- * @comment The read only method of this class are thread-safe while the mutating methods are not unless otherwise noted.
+ * Records information for exactly one HTML page. Writable version on Page.
  */
-public final class PageStats
+final class PageStats extends Page
 {
-	/** Dummy page for all excluded link targets. */
-	public static final PageStats EXCLUDED = new PageStats("", false);
-	static
-	{	EXCLUDED.state = PageState.EXCLUDED;
+	/** Internal URL (injection from ThreadManager) */
+	public boolean isInternal;
+
+	/** Create a <em>valid</em> page.
+	 * @param url URL of the page or null if no valid URL can be determined.
+	 * @param sUrl URL of the page as string, never null. */
+	public PageStats(URL url, String sUrl)
+	{	super(url, sUrl);
 	}
 
-	/** Absolute URL of this document as String, primary key, blank for dummy entries. */
-	public final String sUrl;
-	/** Absolute URL as URL class, can be null if sUrl is broken. */
-	public final URL url;
-	/** Internal URL */
-	public final boolean isInternal;
-
-	PageStats(String strURL, boolean internal)
-	{
-		if (strURL == null)
-			throw new NullPointerException();
-		sUrl = strURL;
-		URL url = null;
-		if (strURL.length() != 0)
-			try
-			{	url = new URL(strURL);
-			} catch (MalformedURLException e)
-			{	setError(EventType.URL_error, e.getMessage());
-			}
-		this.url = url;
-		isInternal = internal;
+	/** schedule the current page for later processing
+	 * @return false if the page has already been scheduled. */
+	public boolean schedulePage()
+	{	return state.compareAndSet(PageState.VIRGIN, PageState.PENDING);
 	}
-
-	/** What is the task status of this page excluding anchor messages? */
-	public PageState getPageState()
-	{	return state;
+	public void setExcluded()
+	{	boolean ret = state.compareAndSet(PageState.PENDING, PageState.EXCLUDED);
+	  assert ret;
 	}
-	/** What is the task status of this page including anchor messages? */
-	public PageState getTotalState()
-	{	return anchorMessages != null ? PageState.FAILED : state;
-	}
-	private volatile PageState state = PageState.PENDING;
-
-	/** Which error types occurred, if any? */
-	public EnumSet<EventType> getEvents()
-	{	return events;
-	}
-	private final EnumSet<EventType> events = EnumSet.noneOf(EventType.class);
-
-	/** Error text (mutilline) excluding anchor messages */
-	public String getPageMessages()
-	{	return messages;
-	}
-	private volatile String messages = null;
-	/** Error text (mutilline) including anchor messages */
-	public String getTotalMessages()
-	{	return strcat(messages, anchorMessages, '\n');
-	}
-	private volatile String anchorMessages = null;
-
-	/** Time taken to analyze this document. &lt; 0 =&gt; in progress. */
-	public long getDuration()
-	{	return duration;
-	}
-	private volatile long duration = 0;
-
-	void setRunning()
-	{
-		state = PageState.RUNNING;
+	/** Notify about start of page processing */
+	public void setRunning()
+	{	boolean ret = state.compareAndSet(PageState.PENDING, PageState.RUNNING);
+		assert ret;
 		duration -= System.currentTimeMillis();
 	}
-
-	void setInfo(EventType type, String message)
-	{
-		events.add(type);
-		if (message == null)
-			return;
-		if (type == EventType.Bad_anchor)
-			anchorMessages = strcat(anchorMessages, message, '\n');
+	/** Notify about completion of page processing
+	 * If the page is in state RUNNING duration is set to the time taken so far.
+	 * Otherwise duration stays unchanged. */
+	public void setDone()
+	{	boolean ret = state.compareAndSet(PageState.RUNNING, PageState.DONE);
+		if (ret)
+			duration += System.currentTimeMillis();
 		else
-			messages = strcat(messages, message, '\n');
+			state.set(PageState.DONE);
+		for (Link l : linksIn)
+			((LinkStats)l).checkAnchor();
 	}
-
-	void setWarning(EventType type, String message)
-	{
-		state = PageState.WARNING;
-		setInfo(type, message);
-	}
-
-	void setError(EventType type, String message)
-	{
-		state = PageState.FAILED;
-		setInfo(type, message);
-	}
-
-	void setDone()
-	{
-		duration += System.currentTimeMillis();
-		if (state != PageState.FAILED)
-			state = PageState.DONE;
-		// Check anchors of links added meanwhile
-		linksIn.forEach(this::checkAnchor);
-	}
-
-	void setRetry()
-	{
-		state = PageState.RETRY;
+	/** Set failed page to RETRY state. This implicitly clears all collected information */
+	public void setRetry()
+	{	boolean ret = state.compareAndSet(PageState.RUNNING, PageState.RETRY);
+		assert ret;
 		// reset state
-		events.clear();
-		messages = "";
+		events = null;
 
 		contentType = null;
 		size        = -1;
@@ -135,79 +71,56 @@ public final class PageStats
 		date        = null;
 		if (linksOut != null)
 			linksOut.clear();
-		if (anchors != null)
-			anchors.clear();
+		anchors.setRelease(null);
 	}
 
-
-	/** MIME type */
-	public String getContentType()
-	{	return contentType;
+	/** Add page message */
+	private void addMessage(Message e)
+	{	if (events == null)
+			events = new Vector<>();
+		events.add(e);
 	}
+	final void addError(MessageType type, String text)
+	{	addMessage(new Message(type, Severity.ERROR, text));
+	}
+	final void addWarning(MessageType type, String text)
+	{	addMessage(new Message(type, Severity.Warning, text));
+	}
+	final void addInfo(MessageType type, String text)
+	{	addMessage(new Message(type, Severity.Info, text));
+	}
+
+	/** Set MIME type */
 	void setContentType(String contentType)
 	{	this.contentType = contentType;
 	}
-	private volatile String contentType = null;
 
-	/** Object size in bytes or -1 if unknown. */
-	public long getSize()
-	{	return size;
-	}
+	/** Set page size in bytes or -1 if unknown. */
 	void setSize(long size)
 	{	this.size = size;
 	}
-	private volatile long size = -1;
 
-	/** Source code lines of document or -1 if unknown */
-	public int getLines()
-	{	return lines;
-	}
+	/** Set no of code lines of document or -1 if unknown */
 	void setLines(int lines)
 	{	this.lines = lines;
 	}
-	private volatile int lines = -1;
 
-	/** Document title or null if not available */
-	public String getTitle()
-	{	return title;
-	}
+	/** Append string to document title */
 	void setTitle(String title)
 	{	this.title = title;
 	}
-	void appendTitle(String title)
-	{	this.title = strcat(this.title, title);
-	}
-	private volatile String title = null;
 
-	/** Document/file modification date or null if unknown */
-	public Date getDate()
-	{	return date;
-	}
+	/** Set document/file modification date or null if unknown */
 	void setDate(Date date)
 	{	this.date = date;
 	}
-	private volatile Date date = null;
 
-	/** Get links from other documents that point to this object. */
-	public Collection<Link> getLinksIn()
-	{	return linksInRO;
-	}
 	/** add incoming link, thread-safe! */
-	void addLinkIn(Link l)
-	{	linksIn.add(l);
-		l.TargetPage = this;
-		if (state.compareTo(PageState.DONE) >= 0)
-			checkAnchor(l); // page is complete, check anchors immediately
+	void addLinkIn(LinkStats l)
+	{	l.setTarget(this);
+		linksIn.add(l);
 	}
-	private final Vector<Link> linksIn = new Vector<>();
-	private final Collection<Link> linksInRO = Collections.unmodifiableCollection(linksIn);
 
-
-	/** Link depth of this document, i.e. shortest path from one of the starting points.
-	 * 0 = starting point, Integer.MAX_VALUE = undefined. */
-	public int getLevel()
-	{	return level.intValue();
-	}
 	/** Set link depth. Subsequent calls can only <em>lower</em> the value.
 	 * @param depth
 	 * @return old value
@@ -216,87 +129,39 @@ public final class PageStats
 	{	int old;
 		do
 		{	old = level.intValue();
-			if (old >= depth)
+			if (old <= depth)
 				break;
 		} while (!level.compareAndSet(old, depth));
 		return old;
 	}
-	private final AtomicInteger level = new AtomicInteger(Integer.MAX_VALUE);
 
-	/** Get links from this document to other objects. */
-	public Collection<Link> getLinksOut()
-	{	Collection<Link> ret = linksOutRO;
-		return ret != null ? ret : Collections.<Link>emptyList();
-	}
+	/** Add outgoing link */
 	void addLinkOut(Link l)
 	{	if (linksOut == null)
-		{	linksOut = new Vector<>();
-			linksOutRO = Collections.unmodifiableCollection(linksOut);
-		}
+			linksOut = new Vector<>();
 		linksOut.add(l);
 	}
-	private Vector<Link> linksOut = null;
-	private volatile Collection<Link> linksOutRO = null;
 
-	/** Anchor names defined in this document. */
-	public Set<String> getAnchors()
-	{	Set<String> ret = anchorsRO;
-		return ret != null ? ret : Collections.<String>emptySet();
+	private Map<String,Message> ensureAnchors()
+	{	return anchors.weakLazyInit(() -> Collections.synchronizedMap(new HashMap<>()));
 	}
+
+	/** Internal placeholder for null because otherwise the is no atomic computeIfAbsent method. */
+	private final static Message noMessage = new Message(MessageType.Bad_anchor, Severity.ERROR,  "");
+
+	/** Add existing anchor defined in this document. */
 	void addAnchor(String name)
-	{	if (anchors == null)
-		{	anchors = Collections.synchronizedSet(new HashSet<>());
-			anchorsRO = Collections.unmodifiableSet(anchors);
-		}
-		anchors.add(name);
-	}
-	private Set<String> anchors = null;
-	private volatile Set<String> anchorsRO = null;
-
-	/** Referenced anchor names <em>not</em> defined in this document. */
-	public Set<String> getBadAnchors()
-	{	Set<String> ret = badAnchorsRO;
-		return ret != null ? ret : Collections.<String>emptySet();
-	}
-	/** Add bad anchor, thread-safe
-	 * @param name Name
-	 * @return false: the bad anchor was identified before.
-	 */
-	private boolean addBadAnchor(String name)
-	{	if (badAnchors == null)
-		{	badAnchors = Collections.synchronizedSet(new HashSet<>());
-			badAnchorsRO = Collections.unmodifiableSet(badAnchors);
-		}
-		return badAnchors.add(name);
-	}
-	private Set<String> badAnchors = null;
-	private volatile Set<String> badAnchorsRO = null;
-
-
-	private void checkAnchor(Link l)
-	{	// already done?
-		if (l.getAnchorState() != null) // check implies l.Anchor != null
-			return;
-		// There is a race condition here. But on worst case the check is done twice.
-		boolean ok = getAnchors().contains(l.Anchor);
-		l.setAnchorState(ok);
-		if (!ok && addBadAnchor(l.Anchor))
-			setError(EventType.Bad_anchor, '#' + l.Anchor);
+	{	ensureAnchors().put(name, noMessage);
 	}
 
-	public String toString()
-	{
-		String result =
-			"URL         = " + url + '\n' +
-			"status      = " + events + '\n' +
-			"errorString = " + messages + '\n' +
-			"contentType = " + contentType + '\n' +
-			"size        = " + size + '\n' +
-			"title       = " + title + '\n' +
-			"date        = " + date + '\n' +
-			"level       = " + level + '\n' +
-			"linksIn     = " + linksIn + '\n' +
-			"linksOut    = " + linksOut + '\n';
-		return result;
+	/** Check whether an anchor exists.
+	 * The check must not be done unless the page has completed.
+	 * @param name Anchor name to search for.
+	 * @return null, if the anchor exists, an error Event if not. */
+	Message checkAnchor(String name)
+	{	if (state.get() != PageState.DONE)
+			return null;
+		Message ret = ensureAnchors().computeIfAbsent(name, (n) -> new Message(MessageType.Bad_anchor, Severity.ERROR, '#' + n));
+		return ret == noMessage ? null : ret;
 	}
 }

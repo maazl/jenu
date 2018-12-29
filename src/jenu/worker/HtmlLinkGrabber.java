@@ -12,6 +12,9 @@ import org.xml.sax.SAXParseException;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.DefaultHandler;
 
+import jenu.model.Link;
+import jenu.model.MessageType;
+
 final class HtmlLinkGrabber extends DefaultHandler
 {
 	public void handleHTML(InputStream is) throws IOException
@@ -25,7 +28,7 @@ final class HtmlLinkGrabber extends DefaultHandler
 			s.setByteStream(is);
 			p.parse(s);
 		} catch (SAXException e)
-		{	stats.setError(EventType.HTML_parse_error, e.toString());
+		{	stats.addError(MessageType.Parse_error, e.toString());
 		}
 	}
 
@@ -84,7 +87,7 @@ final class HtmlLinkGrabber extends DefaultHandler
 
 		// Handle links
 		if (target != null && target.length() != 0)
-		{	Link link = new Link(localName.toLowerCase(), target, stats.url, getLine());
+		{	Link link = new LinkStats(localName.toLowerCase(), target, stats, getLine());
 			stats.addLinkOut(link);
 		}
 	}
@@ -127,12 +130,12 @@ final class HtmlLinkGrabber extends DefaultHandler
 
 	@Override public void warning(SAXParseException ex) throws SAXException
 	{	if (stats.isInternal) // no errors in external pages
-			stats.setWarning(EventType.HTML_parse_error, formatException(ex));
+			stats.addWarning(MessageType.Parse_error, formatException(ex));
 	}
 
 	@Override public void error(SAXParseException ex) throws SAXException
 	{	if (stats.isInternal) // no errors in external pages
-			stats.setError(EventType.HTML_parse_error, formatException(ex));
+			stats.addError(MessageType.Parse_error, formatException(ex));
 	}
 
 	private static String formatException(SAXParseException ex)

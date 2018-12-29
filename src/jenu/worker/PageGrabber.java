@@ -1,11 +1,12 @@
 package jenu.worker;
 
-import java.net.URL;
 import java.net.FileNameMap;
 import java.net.HttpURLConnection;
 import java.net.URLConnection;
 import java.io.*;
 import java.util.*;
+
+import jenu.model.*;
 
 /**
  * Grabs pages from the Internet, parses them, and finds embedded links.
@@ -13,7 +14,7 @@ import java.util.*;
 final class PageGrabber extends Thread
 {
 	private final ThreadManager m_manager;
-	PageStats m_stats = null;
+	volatile PageStats m_stats = null;
 	private InputStream m_input;
 
 	static
@@ -38,21 +39,20 @@ final class PageGrabber extends Thread
 	public void run()
 	{
 		do
-		{	URL url = m_stats.url;
-			try
+		{	try
 			{
-				URLConnection connection = url.openConnection();
-				connection.setConnectTimeout(m_manager.getWorkingSet().Timeout);
-				connection.setReadTimeout(m_manager.getWorkingSet().Timeout);
+				URLConnection connection = m_stats.url.openConnection();
+				connection.setConnectTimeout(m_manager.getWorkingSet().timeout);
+				connection.setReadTimeout(m_manager.getWorkingSet().timeout);
 				connection.connect();
 				if (connection instanceof HttpURLConnection)
 					handleHTTPConnection((HttpURLConnection)connection);
 				else
 					handleGenericConnection(connection);
 			} catch (java.io.IOException ioe)
-			{	m_stats.setError(EventType.IO_error, ioe.toString());
-			} catch (Throwable ex)
-			{	m_stats.setError(EventType.Internal_error, ex.toString());
+			{	m_stats.addError(MessageType.IO_error, ioe.toString());
+			} catch (Exception ex)
+			{	m_stats.addError(MessageType.Internal_error, ex.toString());
 			}
 		} while (m_manager.nextTask(this));
 	}
@@ -66,17 +66,17 @@ final class PageGrabber extends Thread
 		 case HttpURLConnection.HTTP_MOVED_TEMP:
 		 case 307: // missing in HttpURLConnection
 			location = connection.getHeaderField("Location");
-			m_stats.setInfo(EventType.Redirect, connection.getResponseCode() + " " + connection.getResponseMessage() + ' ' + location);
-			m_stats.addLinkOut(new Link(Link.REDIRECT, location, m_stats.url, 0));
+			m_stats.addInfo(MessageType.Redirect, connection.getResponseCode() + " " + connection.getResponseMessage() + ' ' + location);
+			m_stats.addLinkOut(new LinkStats(Link.REDIRECT, location, m_stats, 0));
 			break;
 		 case HttpURLConnection.HTTP_MOVED_PERM:
 		 case 308: // missing in HttpURLConnection
 			location = connection.getHeaderField("Location");
-			m_stats.setError(EventType.Redirect, connection.getResponseCode() + " " + connection.getResponseMessage() + ' ' + location);
-			m_stats.addLinkOut(new Link(Link.REDIRECT, location, m_stats.url, 0));
+			m_stats.addError(MessageType.Redirect, connection.getResponseCode() + " " + connection.getResponseMessage() + ' ' + location);
+			m_stats.addLinkOut(new LinkStats(Link.REDIRECT, location, m_stats, 0));
 			break;
 		 default:
-			m_stats.setError(EventType.HTTP_error, connection.getResponseCode() + " " + connection.getResponseMessage());
+			m_stats.addError(MessageType.HTTP_error, connection.getResponseCode() + " " + connection.getResponseMessage());
 		}
 	}
 
@@ -115,8 +115,8 @@ final class PageGrabber extends Thread
 			{	if (m_stats.sUrl.charAt(m_stats.sUrl.length()-1) == '/')
 					handleDirectory();
 				else if (new File(m_stats.sUrl.substring(5)).isDirectory())
-				{	m_stats.setInfo(EventType.Redirect, "Directory redirect");
-					m_stats.addLinkOut(new Link(Link.REDIRECT, m_stats.sUrl + '/', m_stats.url, 0));
+				{	m_stats.addInfo(MessageType.Redirect, "Directory redirect");
+					m_stats.addLinkOut(new LinkStats(Link.REDIRECT, m_stats.sUrl + '/', m_stats, 0));
 					return;
 				}
 			}
@@ -130,7 +130,7 @@ final class PageGrabber extends Thread
 		int last = 0;
 		int p;
 		while ((p = s.indexOf('\n', last)) > 0)
-		{	m_stats.addLinkOut(new Link(Link.DIRECTORY, s.substring(last, p), m_stats.url, 0));
+		{	m_stats.addLinkOut(new LinkStats(Link.DIRECTORY, s.substring(last, p), m_stats, 0));
 			last = p + 1;
 		}
 	}

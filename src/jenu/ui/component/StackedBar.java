@@ -154,11 +154,12 @@ public class StackedBar extends JComponent implements StackedBarModelListener
 			for (int i = 0; i < getComponentCount(); ++i)
 				setTexts(i);
 		else
-		{
+		{	JLabel label = ((JLabel)getComponent(index));
 			String text = model.getTextAt(index);
 			if (text == null)
 				text = defaultFormat.format(model.getValueAt(index));
-			((JLabel)getComponent(index)).setText(text);
+			label.setText(text);
+			label.setToolTipText(model.getToolTipTextAt(index));
 		}
 	}
 

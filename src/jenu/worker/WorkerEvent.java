@@ -2,7 +2,7 @@ package jenu.worker;
 
 import java.util.EventObject;
 
-public class JenuThreadEvent extends EventObject
+public class WorkerEvent extends EventObject
 {
 	public final int
 		m_totalUrlsToCheck,
@@ -10,7 +10,7 @@ public class JenuThreadEvent extends EventObject
 		m_threadsRunning,
 		m_urlsToStart;
 
-	public JenuThreadEvent(
+	public WorkerEvent(
 		ThreadManager source,
 		int totalUrlsToCheck,
 		int urlsDone,

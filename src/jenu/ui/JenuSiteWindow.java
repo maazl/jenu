@@ -19,19 +19,18 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
-
-import jenu.ui.JenuResultsTable.Column;
 import jenu.ui.component.StackedBar;
 import jenu.ui.component.StackedBarColorModel;
 import jenu.ui.component.StackedBarModel;
 import jenu.ui.component.StackedBarModelEvent;
 import jenu.ui.component.StackedBarModelListener;
-import jenu.worker.JenuPageEvent;
-import jenu.worker.JenuPageListener;
-import jenu.worker.JenuThreadEvent;
-import jenu.worker.JenuThreadListener;
-import jenu.worker.PageState;
-import jenu.worker.PageStats;
+import jenu.ui.viewmodel.RowState;
+import jenu.ui.viewmodel.StateObject;
+import jenu.ui.viewmodel.StateObjectEvent;
+import jenu.ui.viewmodel.StateObjectListener;
+import jenu.ui.viewmodel.TargetView;
+import jenu.worker.WorkerEvent;
+import jenu.worker.WorkerListener;
 import jenu.worker.ThreadManager;
 import jenu.worker.WorkingSet;
 
@@ -107,13 +106,13 @@ public final class JenuSiteWindow extends JenuFrame
 							if (column >= 0)
 							{	int row = m_table.rowAtPoint(e.getPoint());
 								if (row >= 0)
-									doubleClickLink(m_table.getModel().getRow(m_table.convertRowIndexToModel(row)), Column.fromOrdinal(m_table.convertColumnIndexToModel(column)));
+									doubleClickLink(m_table.getModel().getRow(m_table.convertRowIndexToModel(row)), TargetView.Column.fromOrdinal(m_table.convertColumnIndexToModel(column)));
 				}	}	}	} );
 
 			m_scroll.setViewportView(m_table);
 
 			m_tm.addThreadListener(m_statusBar);
-			m_tm.addPageListener(m_statusBar);
+			m_table.getModel().addStateObjectListener(m_statusBar);
 			m_tm.addThreadListener(e ->
 				{	SwingUtilities.invokeLater(() ->
 						{	if (e.m_threadsRunning + e.m_urlsToStart == 0)
@@ -125,7 +124,7 @@ public final class JenuSiteWindow extends JenuFrame
 			WorkingSet ws = new WorkingSet();
 			String url = m_toolBar.getSite();
 			if (url.length() != 0)
-				ws.Sites.add(url);
+				ws.sites.add(url);
 
 			m_toolBar.setRunning();
 			m_tm.start(ws);
@@ -148,13 +147,13 @@ public final class JenuSiteWindow extends JenuFrame
 		}
 	}
 
-	private static void doubleClickLink(PageStats rowData, Column col)
+	private void doubleClickLink(TargetView.PageRow rowData, TargetView.Column col)
 	{	switch (col)
 		{case Links_in:
-			JenuLinksWindow.openNewWindow(rowData, LinkWindowType.LinksIn);
+			JenuLinksWindow.openWindow(m_tm, rowData.page, LinkWindowType.LinksIn);
 			break;
 		 case Links_out:
-			JenuLinksWindow.openNewWindow(rowData, LinkWindowType.LinksOut);
+			JenuLinksWindow.openWindow(m_tm, rowData.page, LinkWindowType.LinksOut);
 			break;
 		 default:
 			break;
@@ -286,7 +285,7 @@ public final class JenuSiteWindow extends JenuFrame
 		}
 	}
 
-	private final static class StatusBar extends JToolBar implements JenuThreadListener, JenuPageListener
+	private final static class StatusBar extends JToolBar implements WorkerListener, StateObjectListener
 	{
 		JProgressBar m_threadsRunning;
 		StackedBar m_URLsBar;
@@ -305,12 +304,11 @@ public final class JenuSiteWindow extends JenuFrame
 			//m_urlsDone = new ProgressBar(0);
 			m_URLsBar = new StackedBar(barModel);
 			m_URLsBar.setColorModel(new StackedBarColorModel()
-			{	private final PageState[] values = PageState.values();
-				public Color getForegroundColorAt(int index)
+			{	public Color getForegroundColorAt(int index)
 				{	return Color.WHITE;
 				}
 				public Color getBackgroundColorAt(int index)
-				{	return JenuUIUtils.getStateColor(values[index]);
+				{	return JenuUIUtils.getStateColor(RowState.values[index]);
 				}
 			});
 			add(new JLabel("Threads running "));
@@ -321,66 +319,80 @@ public final class JenuSiteWindow extends JenuFrame
 			setFloatable(false);
 		}
 
-		public void threadStateChanged(JenuThreadEvent e)
+		@Override public void threadStateChanged(WorkerEvent e)
 		{
 			SwingUtilities.invokeLater(() ->
-				{	m_threadsRunning.setMaximum(e.getSource().getWorkingSet().MaxWorkerThreads);
+				{	m_threadsRunning.setMaximum(e.getSource().getWorkingSet().maxWorkerThreads);
 					m_threadsRunning.setValue(e.m_threadsRunning);
 				} );
 		}
 
-		public void pageChanged(JenuPageEvent e)
+		@Override public void itemChanged(StateObjectEvent e)
 		{
-			SwingUtilities.invokeLater(() -> barModel.pageChanged(e));
+			SwingUtilities.invokeLater(() -> barModel.itemChanged(e));
 		}
 
 		public void reset()
 		{	barModel.reset();
 		}
 
-		private final static class BarModel implements StackedBarModel, JenuPageListener
+		private final static class BarModel implements StackedBarModel
 		{
 			@SuppressWarnings("unchecked")
-			private final HashSet<String>[] categories = new HashSet[PageState.values().length];
+			private final HashSet<StateObject>[] categories = new HashSet[RowState.values.length];
 			{ for (int i = 0; i < categories.length; ++i)
 					categories[i] = new HashSet<>();
 			}
 
-			public int getCount()
-			{	return PageState.values().length;
+			@Override public int getCount()
+			{	return RowState.values.length;
 			}
 
-			public float getValueAt(int index)
+			@Override public float getValueAt(int index)
 			{	return categories[index].size();
 			}
 
-			public String getTextAt(int index)
+			@Override public String getTextAt(int index)
 			{	return null;
 			}
 
-			public void pageChanged(JenuPageEvent e)
-			{
-				if (!e.isNew)
-				{	if (categories[e.page.getPageState().ordinal()].contains(e.page.sUrl))
+			@Override public String getToolTipTextAt(int index)
+			{	return RowState.values[index].name() + ": " + Integer.toString(categories[index].size());
+			}
+
+			public void itemChanged(StateObjectEvent e)
+			{switchBlock:
+				switch (e.type)
+				{case INSERT:
+					categories[e.item.getState().ordinal()].add(e.item);
+					break;
+				 case DELETE:
+					for (HashSet<StateObject> cat : categories)
+						if (cat.remove(e.item))
+							break switchBlock;
+					return; // Nothing changed
+				 case UPDATE:
+					HashSet<StateObject> myCat = categories[e.item.getState().ordinal()];
+					if (!myCat.add(e.item))
 						return; // Nothing changed
-					for (HashSet<String> cat : categories)
-						if (cat.remove(e.page.sUrl))
+					for (HashSet<StateObject> cat : categories)
+						if (cat != myCat && cat.remove(e.item))
 							break;
+					break;
 				}
-				categories[e.page.getPageState().ordinal()].add(e.page.sUrl);
 				fireChanged();
 			}
 
 			public void reset()
-			{	for (HashSet<String> cat : categories)
+			{	for (HashSet<StateObject> cat : categories)
 					cat.clear();
 			}
 
 			private final ArrayList<StackedBarModelListener> listeners = new ArrayList<>();
-			public void addStackedBarModelListener(StackedBarModelListener l)
+			@Override public void addStackedBarModelListener(StackedBarModelListener l)
 			{	listeners.add(l);
 			}
-			public void removeStackedBarModelListener(StackedBarModelListener l)
+			@Override public void removeStackedBarModelListener(StackedBarModelListener l)
 			{	listeners.remove(l);
 			}
 			private void fireChanged()

@@ -3,31 +3,37 @@ package jenu.worker;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.regex.Pattern;
 
+import jenu.model.Link;
+import jenu.model.MessageType;
+import jenu.utils.AtomicArraySet;
+import jenu.utils.KeyedHashSet;
 
+/** Worker class that processes a WorkingSet. */
 public final class ThreadManager
 {
 	/** Current WorkingSet to be executed. */
-	private WorkingSet Cfg;
+	private WorkingSet cfg;
 	public WorkingSet getWorkingSet()
-	{	return Cfg;
+	{	return cfg;
 	}
-	private Pattern[] Exclusions;
 
 	private boolean scheduledStop = true;
 	private boolean scheduledPause;
 
-	private final HashMap<String, PageStats> urlsAll        = new HashMap<>();
-	private final ArrayDeque<PageStats>      statsToStart   = new ArrayDeque<>();
-	private int                              statsDone      = 0;
-	private final HashSet<PageGrabber>       threadsRunning = new HashSet<>();
+	private final ArrayDeque<PageStats> statsToStart   = new ArrayDeque<>();
+	private int                         statsDone      = 0;
+	private final HashSet<PageGrabber>  threadsRunning = new HashSet<>();
 
+	private final KeyedHashSet<String,PageStats> pagesByUrl = new KeyedHashSet<>(page -> page.sUrl);
+
+	public void reset()
+	{
+		pagesByUrl.clear();
+		statsDone = 0;
+		firePageEvent(null, PageEventType.DELETE);
+	}
 
 	/** Initialize worker to analyze a site.
 	 * @param set Configuration to execute. */
@@ -36,51 +42,22 @@ public final class ThreadManager
 		if (threadsRunning.size() != 0)
 			throw new IllegalStateException("Cannot schedule a new working set while executing.");
 
-		Cfg = set;
+		cfg = set;
 		scheduledStop = false;
 		scheduledPause = false;
 
-		// apply defaults
-		if (Cfg.StartingPoints.size() == 0)
-			Cfg.StartingPoints.addAll(Cfg.Sites);
-		else if (Cfg.Sites.size() == 0)
-			for (String sp : Cfg.StartingPoints)
-				Cfg.Sites.add(getPath(sp));
+		set.validate();
 
-		// normalize Site URLs
-		URL rootURL = null;
-		for (int i = 0; i < Cfg.Sites.size(); ++i)
-		{	try
-			{	URL url = new URL(Cfg.Sites.get(i));
-				if (rootURL == null)
-					rootURL = url;
-				Cfg.Sites.set(i, url.toExternalForm());
-			} catch (MalformedURLException e)
-			{ } // We can safely ignore this error here because it gets repeated by the PageGrabber.
+		// normalize site URLs
+		for (int i = 0; i < cfg.sites.size(); ++i)
+		{	PageStats page = getPage(null, cfg.sites.get(i));
+			if (page.url != null)
+				cfg.sites.set(i, page.url.toExternalForm());
 		}
-
-		// sort Sites and remove duplicates
-		{	Collections.sort(Cfg.Sites);
-			String last = null;
-			Iterator<String> it = Cfg.Sites.iterator();
-			while (it.hasNext())
-			{	String url = it.next();
-				if (url.equals(last))
-					it.remove();
-				else
-					last = url;
-			}
-		}
-
-		// compile exclude Regexes
-		Exclusions = new Pattern[Cfg.ExcludePatterns.size()];
-		int i = 0;
-		for (String excl : Cfg.ExcludePatterns)
-			Exclusions[i++] = Pattern.compile(excl);
 
 		// schedule starting points
-		for (String sp : Cfg.StartingPoints)
-			addLink(new Link(null, sp, rootURL, 0), -1);
+		for (String sp : cfg.startingPoints)
+			followLink(new LinkStats(null, sp, null, 0));
 
 		// and now go parallel ...
 		startThreads();
@@ -127,78 +104,79 @@ public final class ThreadManager
 			{ }
 	}
 
-	private void addLink(Link link, int level)
-	{
-		if (level >= Cfg.MaxDepth)
-			return; // too deep
-
-		PageStats stats = urlsAll.get(link.Target);
-		boolean isNew = stats == null;
-		if (isNew)
-		{	stats = new PageStats(link.Target, isInternalUrl(link.Target));
-			urlsAll.put(link.Target, stats);
-			statsToStart.add(stats);
+	/** Request a PageStats object for a link.
+	 * @param context
+	 * @param url
+	 * @return
+	 */
+	private PageStats getPage(URL context, String url)
+	{	assert url != null;
+		URL asURL = null;
+		MalformedURLException error = null;
+		try
+		{	asURL = new URL(context, url);
+			url = asURL.toExternalForm();
+		} catch (MalformedURLException e)
+		{	error = e;
 		}
-
-		if (link.Type != null)
-			stats.addLinkIn(link);
-
-		applyLevelRecursive(stats, level);
-
-		firePageEvent(stats, isNew);
-	}
-
-	private boolean applyLevelRecursive(PageStats stats, int level)
-	{	++level;
-		int old = stats.reduceLevel(level);
-		if (old == Integer.MAX_VALUE || old <= level)
-			return false;
-		// level lowered, i.e. found a shorter path => apply recursively
-		for (Link l : stats.getLinksOut())
-		{	PageStats stats2 = urlsAll.get(l.Target);
-			if (stats2 != null)
-				if (applyLevelRecursive(stats2, level))
-					firePageEvent(stats2, false);
-		}
-		return true;
-	}
-
-	/** Checks whether an URL belong to the current list of sites.
-	 * @return true: yes */
-	private boolean isInternalUrl(String url)
-	{
-		int p = Collections.binarySearch(Cfg.Sites, url);
-		if (p >= 0)
-			return true; // exact hit
-		return p != -1 && url.startsWith(Cfg.Sites.get(-2 - p));
-	}
-
-	/** Checks whether any of the exclude patterns matches an URL. */
-	private boolean isExcluded(String url)
-	{
-		for (Pattern rx : Exclusions)
-			if (rx.matcher(url).find())
-				return true;
-		return false;
-	}
-
-	/** Retrieve path component of URL */
-	private static String getPath(String url)
-	{	int lastSlash = -1;
-		for (int i = 0; i < url.length(); ++i)
-		{	switch (url.charAt(i))
-			{case '/':
-				lastSlash = i;
-			 //$FALL-THROUGH$
-			 default:
-				continue;
-			 case '?':
-			 case '#':
-				break;
+		PageStats page = pagesByUrl.getByKey(url);
+		if (page == null)
+		{	// new page
+			page = new PageStats(asURL, url);
+			if (error != null)
+			{	page.addError(MessageType.URL_error, error.getMessage());
+				page.setDone();
 			}
-			break;
+			pagesByUrl.add(page);
 		}
-		return lastSlash >= 0 ? url.substring(0, lastSlash + 1) : url;
+		return page;
+	}
+
+	private void followLinks(PageStats page)
+	{
+		if (page.isInternal || cfg.followExternalRedirects)
+			for (Link link : page.getLinksOut())
+				if (page.isInternal || link.type == Link.REDIRECT) // Allow redirects always because w/o FollowExternalRedirects you won't get that far
+					followLink((LinkStats)link);
+	}
+
+	private void followLink(LinkStats link)
+	{
+		int level = link.source != null ? link.source.getLevel() : -1;
+		PageStats page = (PageStats)link.getTargetPage();
+
+		// already done?
+		boolean isNew = false;
+		if (page == null)
+		{	if (level >= cfg.maxDepth)
+				return; // too deep
+
+			page = getPage(link.source != null ? link.source.url : null, link.getTargetUrl());
+
+			if (page.schedulePage())
+			{	// My thread added the page
+				isNew = true;
+				if (cfg.isInternalUrl(page.sUrl))
+					page.isInternal = true;
+				if (!cfg.isExcluded(page.sUrl) && (cfg.checkExternalURLs || page.isInternal))
+					statsToStart.add(page);
+				else
+					page.setExcluded();
+			}
+
+			if (link.type != null)
+			{	page.addLinkIn(link);
+				link.checkAnchor(); // check anchors immediately?
+			}
+		}
+
+		// Apply level
+		++level;
+		int old = page.reduceLevel(level);
+		if (old != Integer.MAX_VALUE && old > level)
+			followLinks(page); // level lowered, i.e. found a shorter path => apply recursively
+
+		firePageEvent(page, isNew ? PageEventType.NEW : PageEventType.LINKSIN);
 	}
 
 	/** Initially start threads until the limit is reached.
@@ -221,17 +199,8 @@ public final class ThreadManager
 		{	PageStats stats = grabber.m_stats;
 			stats.setDone();
 			++statsDone;
-			firePageEvent(stats, false);
-
-			if (stats.isInternal || Cfg.FollowExternalRedirects)
-				for (Link link : stats.getLinksOut())
-					if ( (stats.isInternal || link.Type == Link.REDIRECT) // Allow redirects always because w/o FollowExternalRedirects you won't get that far
-						&& (Cfg.CheckExternalURLs || isInternalUrl(link.Target)) ) // Do not add external Targets unless enabled.
-					{	if (isExcluded(link.Target)) // Exclude beats all
-							PageStats.EXCLUDED.addLinkIn(link);
-						else
-							addLink(link, stats.getLevel());
-					}
+			followLinks(stats);
+			firePageEvent(stats, PageEventType.STATE);
 		}
 
 		// schedule new task?
@@ -250,14 +219,12 @@ public final class ThreadManager
 		return true;
 	}
 
-	/**
-	 * Try to start new thread.
+	/** Try to start new thread.
 	 * @return new Thread or null if a new thread is currently not required or not wanted.
-	 * You need to schedule a task to the new thread if you got one.
-	 */
+	 * You need to schedule a task to the new thread if you got one. */
 	private PageGrabber startNextThread()
 	{
-		if (threadsRunning.size() >= Cfg.MaxWorkerThreads || statsToStart.size() == 0)
+		if (threadsRunning.size() >= cfg.maxWorkerThreads || statsToStart.size() == 0)
 			return null;
 		PageGrabber grabber = new PageGrabber(this);
 		threadsRunning.add(grabber);
@@ -270,43 +237,45 @@ public final class ThreadManager
 		PageStats stats = statsToStart.pop();
 		grabber.m_stats = stats;
 		stats.setRunning();
-		firePageEvent(stats, false);
+		firePageEvent(stats, PageEventType.STATE);
 	}
 
 	// Methods for JenuThreadListeners
-	private final ArrayList<JenuThreadListener> threadListeners	= new ArrayList<>();
+	private final AtomicArraySet<WorkerListener> threadListeners	= new AtomicArraySet<>(new WorkerListener[0]);
 
-	public synchronized void addThreadListener(JenuThreadListener l)
-	{	threadListeners.add(l);
+	public final boolean addThreadListener(WorkerListener l)
+	{	return threadListeners.add(l);
 	}
 
-	public synchronized void removeThreadListener(JenuThreadListener l)
-	{	threadListeners.remove(l);
+	public final boolean removeThreadListener(WorkerListener l)
+	{	return threadListeners.remove(l);
 	}
 
 	private void fireThreadEvent()
-	{	if (threadListeners.size() != 0)
-		{	JenuThreadEvent e = new JenuThreadEvent(this, urlsAll.size(), statsDone, threadsRunning.size(), statsToStart.size());
-			for (JenuThreadListener i : threadListeners)
+	{	WorkerListener[] listeners = threadListeners.get();
+		if (listeners.length != 0)
+		{	WorkerEvent e = new WorkerEvent(this, pagesByUrl.size(), statsDone, threadsRunning.size(), statsToStart.size());
+			for (WorkerListener i : listeners)
 				i.threadStateChanged(e);
 		}
 	}
 
 	// Methods for JenuPageListeners
-	private volatile ArrayList<JenuPageListener> pageListeners = new ArrayList<>();
+	private final AtomicArraySet<PageListener> pageListeners = new AtomicArraySet<>(new PageListener[0]);
 
-	public synchronized void addPageListener(JenuPageListener l)
-	{	pageListeners.add(l);
+	public final boolean addPageListener(PageListener l)
+	{	return pageListeners.add(l);
 	}
 
-	public synchronized void removePageListener(JenuPageListener l)
-	{	pageListeners.remove(l);
+	public final boolean removePageListener(PageListener l)
+	{	return pageListeners.remove(l);
 	}
 
-	private void firePageEvent(PageStats page, boolean isNew)
-	{	if (pageListeners.size() != 0)
-		{	JenuPageEvent e = new JenuPageEvent(this, page, isNew);
-			for (JenuPageListener i : pageListeners)
+	private void firePageEvent(PageStats page, PageEventType type)
+	{	PageListener[] listeners = pageListeners.get();
+		if (listeners.length != 0)
+		{	PageEvent e = new PageEvent(this, page, type);
+			for (PageListener i : listeners)
 				i.pageChanged(e);
 		}
 	}
