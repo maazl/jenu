@@ -15,28 +15,47 @@ public class WorkingSet
 	/** List of site URLs. All URLs that start with one of these URLs are considered to be <em>internal</em>
 	 * and scanned recursively. All other URLs are external.
 	 * If empty the path components of @see StatingPoints are used. */
-	public ArrayList<String> sites = new ArrayList<>();
+	public final ArrayList<String> sites = new ArrayList<>();
 	/** List of page URLs that should be used as starting point.
 	 * From this Point every internal URL (according to @see Sites) are scanned recursively.
 	 * If empty, the Starting point URLs are used. */
-	public ArrayList<String> startingPoints = new ArrayList<>();
+	public final ArrayList<String> startingPoints = new ArrayList<>();
 	/** URL patterns to exclude from check. These are Regular expressions matched against the <em>full</em> URL.
 	 * If one of them matches the URL is ignored. This applies to internal URLs as well as to external ones. */
-	public ArrayList<Pattern> excludePatterns = new ArrayList<Pattern>() {{ add(Pattern.compile("/\\.")); }};
+	public final ArrayList<Pattern> excludePatterns = new ArrayList<Pattern>();
 
 	/** Check external URLs as well.
 	 * If true any external link is checked for validity too. But external URLs are never scanned recursively. */
-	public boolean checkExternalURLs = true;
+	public boolean checkExternalURLs;
 	/** Follow HTTP redirects on external URLs. Normally external URLs are not checked recursively. */
-	public boolean followExternalRedirects = true;
+	public boolean followExternalRedirects;
 
 	/** Maximum concurrent threads */
-	public int maxWorkerThreads = 10;
+	public int maxWorkerThreads;
 	/** Timeout in ms for connections. */
-	public int timeout = 10000;
+	public int timeout;
 	/** Do not follow links that require more than MaxDepth documents from any of the starting points.
 	 * This also restricts the maximum number of redirects which are considered to be a special kind of link. */
-	public int maxDepth = 100;
+	public int maxDepth;
+
+	/** create WorkingSet with default values. */
+	public WorkingSet()
+	{	reset();
+	}
+
+	/** Reset instance to it's initial state. */
+	public void reset()
+	{	sites.clear();
+		startingPoints.clear();
+		excludePatterns.clear();
+		excludePatterns.add(defaultExclude);
+		checkExternalURLs = true;
+		followExternalRedirects = true;
+		maxWorkerThreads = 10;
+		timeout = 1000;
+		maxDepth = 100;
+	}
+	private final static Pattern defaultExclude = Pattern.compile("/\\.");
 
 	public void validate()
 	{	// no empty strings
@@ -57,7 +76,7 @@ public class WorkingSet
 
 	/** Checks whether an URL belongs to the current list of sites.
 	 * @return true: yes */
-	boolean isInternalUrl(String url)
+	final boolean isInternalUrl(String url)
 	{
 		int p = Collections.binarySearch(sites, url);
 		if (p >= 0)
@@ -67,7 +86,7 @@ public class WorkingSet
 
 	/** Checks whether any of the exclude patterns matches an URL.
 	 * @return true: yes */
-	boolean isExcluded(String url)
+	final boolean isExcluded(String url)
 	{
 		for (Pattern rx : excludePatterns)
 			if (rx.matcher(url).find())
