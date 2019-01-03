@@ -7,6 +7,13 @@ public final class Statics
 {
 	private Statics() {}
 
+	/** Check if string is null or empty
+	 * @param s String to check
+	 * @return true: s is null or empty. */
+	public static boolean isEmpty(String s)
+	{	return s == null || s.length() == 0;
+	}
+
 	/** Concatenate two strings where each of them might be null which is considered to be the same as "".
 	 * @param s1 left string
 	 * @param s2 right string

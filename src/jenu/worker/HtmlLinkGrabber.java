@@ -14,6 +14,7 @@ import org.xml.sax.helpers.DefaultHandler;
 
 import jenu.model.Link;
 import jenu.model.MessageType;
+import static jenu.utils.Statics.*;
 
 final class HtmlLinkGrabber extends DefaultHandler
 {
@@ -61,8 +62,6 @@ final class HtmlLinkGrabber extends DefaultHandler
 			if (!stats.isInternal) // only check for anchors at external pages.
 				return;
 			target = attributesGet(atts, "href");
-			if (target.startsWith("javascript:") || target.startsWith("mailto:"))
-				target = null; // exclude JavaScript & mail URLs
 		} else if (!stats.isInternal) // only check for anchors at external pages.
 			return;
 		else if (localName.equalsIgnoreCase("img") || localName.equalsIgnoreCase("frame"))
@@ -88,10 +87,10 @@ final class HtmlLinkGrabber extends DefaultHandler
 			return; //tag not relevant
 
 		// Handle links
-		if (target != null && target.length() != 0)
-		{	Link link = new LinkStats(localName.toLowerCase(), target, stats, getLine());
-			stats.addLinkOut(link);
-		}
+		if (isEmpty(target) || target.startsWith("javascript:") || target.startsWith("mailto:")) // exclude JavaScript & mail URLs too
+			return;
+		Link link = new LinkStats(localName.toLowerCase(), target, stats, getLine());
+		stats.addLinkOut(link);
 	}
 
 	@Override public void characters(char[] c, int start, int length) throws SAXException
