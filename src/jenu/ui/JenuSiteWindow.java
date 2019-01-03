@@ -6,6 +6,8 @@ import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -97,7 +99,7 @@ public final class JenuSiteWindow extends JenuFrame
 		m_site = site;
 
 		setJMenuBar(new JMenuBar());
-		makeMenu("Site", aNew, aOpen, aSave, aSaveAs, aSaveDefault, null, aReset, aClose);
+		makeMenu("Site", aNew, aOpen, aSave, aSaveAs, aSaveDefault, null, aEdit, null, aReset, aClose);
 
 		m_toolBar = new ToolBar();
 		getContentPane().add(m_toolBar, BorderLayout.NORTH);
@@ -178,7 +180,7 @@ public final class JenuSiteWindow extends JenuFrame
 		}
 	}
 
-	final FunctionalAction aNew = new FunctionalAction("New empty window", (e) -> openWindow(null));
+	final FunctionalAction aNew = new FunctionalAction("New empty window", (e) -> openWindow(new Site()));
 
 	final FunctionalAction aOpen = new FunctionalAction("Open...", (e) ->
 	{	JFileChooser fc = getFileChooser();
@@ -223,6 +225,17 @@ public final class JenuSiteWindow extends JenuFrame
 		}
 	}
 
+	final FunctionalAction aEdit = new FunctionalAction("Properties...", JenuSiteWindow.this::editProperties);
+	private void editProperties(ActionEvent ev)
+	{	SiteEditor edit = SiteEditor.openWindow(this, m_site);
+		edit.addWindowListener(new WindowAdapter()
+		{	@Override public void windowClosed(WindowEvent e)
+			{	if (((SiteEditor)e.getWindow()).getResult() == JOptionPane.OK_OPTION)
+					bindData();
+			}
+		});
+	}
+
 	final FunctionalAction aReset = new FunctionalAction("Clear form", JenuSiteWindow.this::reset);
 	private void reset(ActionEvent ev)
 	{	m_site.reset();
@@ -244,6 +257,8 @@ public final class JenuSiteWindow extends JenuFrame
 	{
 		m_toolBar.m_site.setText(m_site.sites.size() != 0 ? m_site.sites.get(0) : "");
 		aSave.setEnabled(m_site.lastFile != null);
+		// TODO Bug: JProgressBar does not update the screen when only the maximum value changes.
+		m_statusBar.m_threadsRunning.setMaximum(m_site.maxWorkerThreads);
 	}
 
 	private boolean fetchData()
@@ -386,10 +401,7 @@ public final class JenuSiteWindow extends JenuFrame
 
 		@Override public void threadStateChanged(WorkerEvent e)
 		{
-			SwingUtilities.invokeLater(() ->
-				{	m_threadsRunning.setMaximum(e.getSource().getWorkingSet().maxWorkerThreads);
-					m_threadsRunning.setValue(e.m_threadsRunning);
-				} );
+			SwingUtilities.invokeLater(() -> m_threadsRunning.setValue(e.m_threadsRunning));
 		}
 
 		@Override public void itemChanged(StateObjectEvent e)
