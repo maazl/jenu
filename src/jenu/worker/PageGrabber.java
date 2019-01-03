@@ -37,8 +37,7 @@ final class PageGrabber extends Thread
 	}
 
 	public void run()
-	{
-		do
+	{	do
 		{	try
 			{
 				URLConnection connection = m_stats.url.openConnection();
@@ -81,12 +80,12 @@ final class PageGrabber extends Thread
 	}
 
 	private void handleGenericConnection(URLConnection connection) throws IOException
-	{
+	{	// Access InputStream first to get reasonable error messages in case of invalid FTP URLs.
+		m_input = connection.getInputStream();
 		m_stats.setContentType(connection.getContentType());
 		long lastModified = connection.getLastModified();
 		if (lastModified > 0)
 			m_stats.setDate(new Date(lastModified));
-		m_input = connection.getInputStream();
 		try
 		{	m_stats.setSize(connection.getContentLengthLong());
 			handleContent(m_stats.getContentType());
