@@ -1,7 +1,9 @@
 package jenu.utils;
 
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.function.BiPredicate;
 
 public final class Statics
 {
@@ -41,20 +43,32 @@ public final class Statics
 		return s1 + delim + s2;
 	}
 
-	/** Remove adjacent duplicate from a collection.
-	 * This will only remove <em>all</em> duplicates if the collection is sorted.
+	/** Remove adjacent duplicate from a collection using a costom test function.
 	 * @param collection Collection to process.
-	 */
-	public static void removeAdjacentDuplicates(Iterable<?> collection)
-	{	Object last = null;
-		Iterator<?> it = collection.iterator();
+	 * @param comparer Test function. The first argument is always the previous element of the collection
+	 * while the second argument is the current one to be removed when the predicate returns true.
+	 * If more than two subsequent elements satisfy the condition the first argument will still remain the same
+	 * instead of passing adjacent pairs of elements. */
+	public static <T> void removeAdjacentDuplicates(Iterable<T> collection, BiPredicate<? super T, ? super T> comparer)
+	{	if (collection instanceof Collection && ((Collection<T>)collection).size() < 1)
+			return;
+		Iterator<T> it = collection.iterator();
+		if (!it.hasNext())
+			return;
+		T last = it.next();
 		while (it.hasNext())
-		{	Object url = it.next();
-			if (url.equals(last))
+		{	T next = it.next();
+			if (comparer.test(last, next))
 				it.remove();
 			else
-				last = url;
+				last = next;
 		}
+	}
+	/** Remove adjacent duplicates from a collection.
+	 * This will only remove <em>all</em> duplicates if the collection is sorted.
+	 * @param collection Collection to process. Null elements are allowed. */
+	public static void removeAdjacentDuplicates(Iterable<?> collection)
+	{	removeAdjacentDuplicates(collection, Objects::equals);
 	}
 
 	/** Locate element in an array by linear search.

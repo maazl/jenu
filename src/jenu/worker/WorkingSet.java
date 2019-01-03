@@ -5,6 +5,8 @@ import java.util.Collections;
 import java.util.regex.Pattern;
 
 import static jenu.utils.Statics.*;
+
+import jenu.utils.Statics;
 import jenu.utils.UrlUtils;
 
 /** Working set to be executed by @see ThreadManager */
@@ -37,17 +39,20 @@ public class WorkingSet
 	public int maxDepth = 100;
 
 	public void validate()
-	{
+	{	// no empty strings
+		sites.replaceAll(String::trim);
+		sites.removeIf(Statics::isEmpty);
+		startingPoints.replaceAll(String::trim);
+		startingPoints.removeIf(Statics::isEmpty);
+
 		// apply defaults
-		if (startingPoints.size() == 0)
-			startingPoints.addAll(sites);
-		else if (sites.size() == 0)
+		if (sites.size() == 0)
 			for (String sp : startingPoints)
 				sites.add(UrlUtils.getPath(sp));
 
-		// sort Sites and remove duplicates
+		// sort Sites and remove duplicates including implications
 		Collections.sort(sites);
-		removeAdjacentDuplicates(sites);
+		removeAdjacentDuplicates(sites, (a, b) -> b.startsWith(a));
 	}
 
 	/** Checks whether an URL belongs to the current list of sites.

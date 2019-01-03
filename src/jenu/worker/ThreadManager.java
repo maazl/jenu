@@ -56,7 +56,7 @@ public final class ThreadManager
 		}
 
 		// schedule starting points
-		for (String sp : cfg.startingPoints)
+		for (String sp : cfg.startingPoints.size() != 0 ? cfg.startingPoints : cfg.sites)
 			followLink(new LinkStats(null, sp, null, 0));
 
 		// and now go parallel ...
@@ -124,9 +124,7 @@ public final class ThreadManager
 		{	// new page
 			page = new PageStats(asURL, url);
 			if (error != null)
-			{	page.addError(MessageType.URL_error, error.getMessage());
-				page.setDone();
-			}
+				page.addError(MessageType.URL_error, error.getMessage());
 			pagesByUrl.add(page);
 		}
 		return page;
@@ -158,10 +156,12 @@ public final class ThreadManager
 				isNew = true;
 				if (cfg.isInternalUrl(page.sUrl))
 					page.isInternal = true;
-				if (!cfg.isExcluded(page.sUrl) && (cfg.checkExternalURLs || page.isInternal))
-					statsToStart.add(page);
-				else
+				if (cfg.isExcluded(page.sUrl) || !(cfg.checkExternalURLs || page.isInternal))
 					page.setExcluded();
+				else if (page.getEvents().size() > 0) // already URL Error?
+					page.setDone(); // => completed immediately
+				else
+					statsToStart.add(page);
 			}
 
 			if (link.type != null)
