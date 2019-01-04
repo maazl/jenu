@@ -29,14 +29,10 @@ put a URL in the window, such as http://www.<mysite>.com.
 
 Currently, you must put the 'http://', it doesn't assume it for you.
 
+
 TODO:
 -----
 There is much to do, but the basic infrastructure is there.
-
-* Create a nice 'Preferences' window which includes:
-   * # of concurrent threads
-   * regular expressions for inclusion/exclusion
-   * much more...
 
 * better way to stop when you hit the stop button.  Currently, it
 waits for all requests to finish before really stopping.  It should
