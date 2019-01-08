@@ -2,18 +2,16 @@ package jenu.ui.viewmodel;
 
 import static jenu.utils.Statics.strcat;
 
-import java.util.ArrayList;
 import java.util.EnumSet;
 import jenu.model.Link;
 import jenu.model.Message;
-import jenu.model.MessageType;
 import jenu.model.Page;
 import jenu.model.PageState;
 import jenu.worker.PageListener;
 
 
 /** Base class for different link views. */
-public abstract class ALinkView extends StateObjectView implements PageListener
+public abstract class LinksView extends StateObjectView<LinksView.LinkRow> implements PageListener
 {
 	/** Column names provided by this view. */
 	public enum Column
@@ -29,15 +27,11 @@ public abstract class ALinkView extends StateObjectView implements PageListener
 		}
 	}
 
-	public abstract void refresh();
-
-	@Override public final int getRowCount()
-	{	return data.size();
-	}
-
-	/** get entire LinkRow */
-	public final LinkRow getRow(int rowIndex)
-	{	return data.get(rowIndex);
+	/** Construct and append new row to {@link #data} */
+	protected LinkRow addNewRow(Link link)
+	{	LinkRow row = new LinkRow(link, data.size());
+		data.add(row);
+		return row;
 	}
 
 	@Override public String getColumnName(int columnIndex)
@@ -96,8 +90,7 @@ public abstract class ALinkView extends StateObjectView implements PageListener
 		}
 	}
 
-	protected final ArrayList<LinkRow> data = new ArrayList<>();
-
+	/** Result row of a link view */
 	public static final class LinkRow implements StateObject
 	{
 		public final Link link;
@@ -160,11 +153,6 @@ public abstract class ALinkView extends StateObjectView implements PageListener
 			return eventCache = message == null ? Message.none : new Message[] { message };
 		}
 		volatile Message[] eventCache = null;
-
-		/** Check whether this Message should be considered a bad link. */
-		private static boolean isLinkError(Message m)
-		{	return m.type != MessageType.Parse_error && m.type != MessageType.Internal_error;
-		}
 
 		public static final LinkRow[] none = new LinkRow[0];
 	}

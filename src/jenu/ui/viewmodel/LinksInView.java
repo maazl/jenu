@@ -1,5 +1,7 @@
 package jenu.ui.viewmodel;
 
+import static javax.swing.SwingUtilities.*;
+
 import jenu.model.Link;
 import jenu.model.Page;
 import jenu.model.PageState;
@@ -7,7 +9,8 @@ import jenu.worker.PageEvent;
 import jenu.worker.PageEventType;
 import jenu.worker.PageListener;
 
-public final class LinksInView extends ALinkView implements PageListener
+/** View model for incoming links to a single page */
+public final class LinksInView extends LinksView
 {
 	private final Page page;
 
@@ -15,31 +18,28 @@ public final class LinksInView extends ALinkView implements PageListener
 	{	this.page = page;
 	}
 
-	private LinkRow addLink(Link link)
-	{	LinkRow row = new LinkRow(link, data.size());
-		data.add(row);
-		return row;
-	}
-
-	@Override public synchronized void refresh()
-	{	data.clear();
-		Link[] links = page.getLinksIn().toArray(Link.noLinks);
+	@Override protected void fetchData()
+	{	Link[] links = page.getLinksIn().toArray(Link.noLinks);
 		data.ensureCapacity(links.length);
 		for (Link link : links)
-			data.add(new LinkRow(link, data.size()));
-		fireStateObjectEvent(null, EventType.INSERT);
-		fireTableDataChanged();
+			addNewRow(link);
 	}
 
 	@Override public synchronized void pageChanged(PageEvent e)
-	{	if (e.page != page)
+	{	if (!isEventDispatchThread())
+		{	invokeLater(() -> pageChanged(e));
+			return;
+		}
+
+		if (e.page != page)
 			return;
 		if (e.type == PageEventType.STATE && e.page.getState() == PageState.DONE)
 			refresh();
 		else if (e.type == PageEventType.LINKSIN) // the last link is new
 		{	Link[] links = e.page.getLinksIn().toArray(Link.noLinks);
-			int index = addLink(links[links.length - 1]).index;
-			fireTableRowsInserted(index, index);
+			LinkRow row = addNewRow(links[links.length - 1]);
+			fireStateObjectEvent(row, EventType.INSERT, false);
+			fireTableRowsInserted(row.index, row.index);
 		}
 	}
 }

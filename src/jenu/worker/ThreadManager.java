@@ -7,6 +7,8 @@ import java.util.HashSet;
 
 import jenu.model.Link;
 import jenu.model.MessageType;
+import jenu.model.Page;
+import jenu.model.PageState;
 import jenu.utils.AtomicArraySet;
 import jenu.utils.KeyedHashSet;
 
@@ -28,6 +30,11 @@ public final class ThreadManager
 
 	private final KeyedHashSet<String,PageStats> pagesByUrl = new KeyedHashSet<>(page -> page.sUrl);
 
+	/** Snapshot of all data currently in the working set. */
+	public synchronized Page[] getData()
+	{	return pagesByUrl.toArray(new Page[0]);
+	}
+
 	public void reset()
 	{
 		pagesByUrl.clear();
@@ -43,6 +50,7 @@ public final class ThreadManager
 			throw new IllegalStateException("Cannot schedule a new working set while executing.");
 
 		cfg = set;
+		reset();
 		scheduledStop = false;
 		scheduledPause = false;
 
@@ -132,7 +140,7 @@ public final class ThreadManager
 
 	private void followLinks(PageStats page)
 	{
-		if (page.isInternal || cfg.followExternalRedirects)
+		if (page.getState() == PageState.DONE && (page.isInternal || cfg.followExternalRedirects))
 			for (Link link : page.getLinksOut())
 				if (page.isInternal || link.type == Link.REDIRECT) // Allow redirects always because w/o FollowExternalRedirects you won't get that far
 					followLink((LinkStats)link);

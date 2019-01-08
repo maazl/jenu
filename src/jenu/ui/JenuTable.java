@@ -19,12 +19,12 @@ import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
 
-import com.sun.org.apache.xerces.internal.impl.dv.xs.DecimalDV;
-
 import jenu.model.Message;
 import jenu.ui.viewmodel.RowState;
+import jenu.ui.viewmodel.StateObject;
+import jenu.ui.viewmodel.StateObjectView;
 
-abstract class JenuTable extends JTable
+class JenuTable<R extends StateObject> extends JTable
 {
 	protected JenuTable(TableModel model)
 	{
@@ -35,17 +35,14 @@ abstract class JenuTable extends JTable
 		setDefaultRenderer(EnumSet.class, new EnumSetRenderer());
 		setDefaultRenderer(Message[].class, new MessagesRenderer());
 
-		TableRowSorter<?> sorter = new TableRowSorter<>(model);
-		for (int i = 0; i < model.getColumnCount(); ++i)
-		{	Comparator<?> comp = getComparator(model.getColumnClass(i));
-			if (comp != null)
-				sorter.setComparator(i, comp);
-		}
-		setRowSorter(sorter);
-
 		getTableHeader().setReorderingAllowed(true);
 		getTableHeader().addMouseListener(new MyMouseListener());
 		setShowGrid(false);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override	public StateObjectView<R> getModel()
+	{	return (StateObjectView<R>)super.getModel();
 	}
 
 	protected final static Color zebraBackground = new Color(0xeeeeee);
@@ -59,7 +56,22 @@ abstract class JenuTable extends JTable
 			c.setBackground((row & 1) != 0 ? getBackground() : zebraBackground);
 		}
 
+		c.setForeground(JenuUIUtils.getStateColor(getModel().getRow(convertRowIndexToModel(row)).getState()));
+
 		return c;
+	}
+
+	@Override public void setModel(TableModel dataModel)
+	{
+		super.setModel(dataModel);
+
+		TableRowSorter<?> sorter = new TableRowSorter<>(dataModel);
+		for (int i = 0; i < dataModel.getColumnCount(); ++i)
+		{	Comparator<?> comp = getComparator(dataModel.getColumnClass(i));
+			if (comp != null)
+				sorter.setComparator(i, comp);
+		}
+		setRowSorter(sorter);
 	}
 
 	@SuppressWarnings("unchecked")

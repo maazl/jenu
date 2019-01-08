@@ -16,4 +16,11 @@ public enum PageState
 	EXCLUDED,
 	/** Page processing has completed. MUST BE THE LAST ONE. */
 	DONE;
+
+	/** True if the state is final, i.e. the properties of this page do no longer change.
+	 * Note that this does not apply to properties that depend on <em>other</em> pages
+	 * like incoming links. */
+	public boolean isFinal()
+	{	return ordinal() > RUNNING.ordinal();
+	}
 }

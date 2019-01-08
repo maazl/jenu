@@ -14,14 +14,18 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
+import javax.swing.AbstractButton;
 import javax.swing.Action;
+import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JProgressBar;
+import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JToolBar;
@@ -34,8 +38,11 @@ import jenu.ui.component.StackedBarColorModel;
 import jenu.ui.component.StackedBarModel;
 import jenu.ui.component.StackedBarModelEvent;
 import jenu.ui.component.StackedBarModelListener;
+import jenu.ui.viewmodel.EventType;
+import jenu.ui.viewmodel.PageView;
 import jenu.ui.viewmodel.RowState;
 import jenu.ui.viewmodel.Site;
+import jenu.ui.viewmodel.SourceView;
 import jenu.ui.viewmodel.StateObject;
 import jenu.ui.viewmodel.StateObjectEvent;
 import jenu.ui.viewmodel.StateObjectListener;
@@ -53,10 +60,12 @@ public final class JenuSiteWindow extends JenuFrame
 	private final ToolBar m_toolBar;
 	private final JScrollPane m_scroll;
 	private final StatusBar m_statusBar;
-	private JenuResultsTable m_table = null;
+	private final JenuTable<PageView.PageRow> m_table;
 
 	private final Site m_site;
-	private ThreadManager m_tm = null;
+	private final ThreadManager m_tm = new ThreadManager();
+
+	private boolean useSourceView = false;
 
 	private static int openWindowCount = 0;
 	private static String getTitle(String sitetitle)
@@ -100,6 +109,12 @@ public final class JenuSiteWindow extends JenuFrame
 
 		setJMenuBar(new JMenuBar());
 		makeMenu("Site", aNew, aOpen, aSave, aSaveAs, aSaveDefault, null, aEdit, null, aReset, aClose);
+		JRadioButtonMenuItem[] views = new JRadioButtonMenuItem[] { new JRadioButtonMenuItem(aTargetView), new JRadioButtonMenuItem(aSourceView) };
+		views[0].setSelected(true);
+		ButtonGroup group = new ButtonGroup();
+		for (AbstractButton b : views)
+			group.add(b);
+		makeMenu("View", views);
 
 		m_toolBar = new ToolBar();
 		getContentPane().add(m_toolBar, BorderLayout.NORTH);
@@ -109,6 +124,31 @@ public final class JenuSiteWindow extends JenuFrame
 
 		m_scroll = new JScrollPane(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
 		getContentPane().add(m_scroll, BorderLayout.CENTER);
+
+		PageView<?> model = getModel();
+		m_table = new JenuTable<>(model);
+		m_table.setMinimumSize(new Dimension(800,0));
+		m_table.addMouseListener( new MouseAdapter()
+			{	public void mouseClicked(MouseEvent e)
+				{	if (e.getClickCount() >= 2)
+					{	int column = m_table.columnAtPoint(e.getPoint());
+						if (column >= 0)
+						{	int row = m_table.rowAtPoint(e.getPoint());
+							if (row >= 0)
+								doubleClickLink(m_table.getModel().getRow(m_table.convertRowIndexToModel(row)), TargetView.Column.fromOrdinal(m_table.convertColumnIndexToModel(column)));
+			}	}	}	} );
+
+		m_scroll.setViewportView(m_table);
+
+		m_tm.addThreadListener(m_statusBar);
+		m_table.getModel().addStateObjectListener(m_statusBar);
+		m_tm.addThreadListener(e ->
+			{	SwingUtilities.invokeLater(() ->
+					{	if (e.m_threadsRunning + e.m_urlsToStart == 0)
+						{	m_toolBar.setStopped();
+					}	} );
+			} );
+		model.attach(m_tm);
 
 		setPreferredSize(new Dimension(800, 560));
 		autoPlacement();
@@ -131,42 +171,17 @@ public final class JenuSiteWindow extends JenuFrame
 
 	final FunctionalAction aRun = new FunctionalAction("Run", JenuSiteWindow.this::startRunning);
 	private void startRunning(ActionEvent ev)
-	{	if (m_tm != null && m_tm.isAlive())
+	{	if (m_tm.isAlive())
 			m_tm.pauseRunning(false);
 		else if (fetchData())
-		{	m_tm = new ThreadManager();
-			m_table = new JenuResultsTable(m_tm);
-			m_table.addMouseListener( new MouseAdapter()
-				{	public void mouseClicked(MouseEvent e)
-					{	if (e.getClickCount() >= 2)
-						{	int column = m_table.columnAtPoint(e.getPoint());
-							if (column >= 0)
-							{	int row = m_table.rowAtPoint(e.getPoint());
-								if (row >= 0)
-									doubleClickLink(m_table.getModel().getRow(m_table.convertRowIndexToModel(row)), TargetView.Column.fromOrdinal(m_table.convertColumnIndexToModel(column)));
-				}	}	}	} );
-
-			m_scroll.setViewportView(m_table);
-
-			m_tm.addThreadListener(m_statusBar);
-			m_table.getModel().addStateObjectListener(m_statusBar);
-			m_tm.addThreadListener(e ->
-				{	SwingUtilities.invokeLater(() ->
-						{	if (e.m_threadsRunning + e.m_urlsToStart == 0)
-							{	m_toolBar.setStopped();
-								m_tm = null;
-						}	} );
-				} );
-			m_statusBar.reset();
-
-			m_toolBar.setRunning();
+		{	m_toolBar.setRunning();
 			m_tm.start(m_site);
 		}
 	}
 
 	final FunctionalAction aStop = new FunctionalAction("Stop", JenuSiteWindow.this::stopRunning);
 	private void stopRunning(ActionEvent ev)
-	{	if (m_tm != null)
+	{	if (m_tm.isAlive())
 		{	m_toolBar.setStopping();
 			m_tm.stopRunning();
 		}
@@ -174,7 +189,7 @@ public final class JenuSiteWindow extends JenuFrame
 
 	final FunctionalAction aPause = new FunctionalAction("Pause", JenuSiteWindow.this::pauseRunning);
 	private void pauseRunning(ActionEvent ev)
-	{	if (m_tm != null)
+	{	if (m_tm.isAlive())
 		{	m_toolBar.setPaused();
 			m_tm.pauseRunning(true);
 		}
@@ -253,6 +268,31 @@ public final class JenuSiteWindow extends JenuFrame
 		return fc;
 	}
 
+	final FunctionalAction aTargetView = new FunctionalAction("Target view", (e) -> setViewModel(false));
+	final FunctionalAction aSourceView = new FunctionalAction("Source view", (e) -> setViewModel(true));
+
+	private void setViewModel(boolean sourceView)
+	{	if (useSourceView == sourceView)
+			return;
+		useSourceView = sourceView;
+		PageView<?> model = getModel();
+		if (m_table != null)
+		{	PageView<?> oldmodel = (PageView<?>)m_table.getModel();
+			oldmodel.detach();
+			oldmodel.removeStateObjectListener(m_statusBar);
+			m_statusBar.itemChanged(new StateObjectEvent(this, null, EventType.RESET, true));
+			model.addStateObjectListener(m_statusBar);
+			model.attach(m_tm);
+			m_table.setModel(model);
+		}
+	}
+
+	private PageView<?> getModel()
+	{	if (useSourceView)
+			return new SourceView();
+		return new TargetView();
+	}
+
 	private void bindData()
 	{
 		m_toolBar.m_site.setText(m_site.sites.size() != 0 ? m_site.sites.get(0) : "");
@@ -291,7 +331,7 @@ public final class JenuSiteWindow extends JenuFrame
 		return true;
 	}
 
-	private void doubleClickLink(TargetView.PageRow rowData, TargetView.Column col)
+	private void doubleClickLink(PageView.PageRow rowData, TargetView.Column col)
 	{	switch (col)
 		{case Links_in:
 			JenuLinksWindow.openWindow(m_tm, rowData.page, LinkWindowType.LinksIn);
@@ -305,8 +345,18 @@ public final class JenuSiteWindow extends JenuFrame
 	}
 
 	private JMenu makeMenu(String title, Action ... items)
-	{	JMenu menu = new JMenu("Site");
+	{	JMenu menu = new JMenu(title);
 		for (Action a : items)
+			if (a == null)
+				menu.addSeparator();
+			else
+				menu.add(a);
+		getJMenuBar().add(menu);
+		return menu;
+	}
+	private JMenu makeMenu(String title, JMenuItem ... items)
+	{	JMenu menu = new JMenu(title);
+		for (JMenuItem a : items)
 			if (a == null)
 				menu.addSeparator();
 			else
@@ -409,10 +459,6 @@ public final class JenuSiteWindow extends JenuFrame
 			SwingUtilities.invokeLater(() -> barModel.itemChanged(e));
 		}
 
-		public void reset()
-		{	barModel.reset();
-		}
-
 		private final static class BarModel implements StackedBarModel
 		{
 			@SuppressWarnings("unchecked")
@@ -437,17 +483,27 @@ public final class JenuSiteWindow extends JenuFrame
 			{	return RowState.values[index].name() + ": " + Integer.toString(categories[index].size());
 			}
 
+			public boolean changed = false;
+
 			public void itemChanged(StateObjectEvent e)
 			{switchBlock:
 				switch (e.type)
-				{case INSERT:
+				{case RESET:
+					for (HashSet<StateObject> cat : categories)
+						cat.clear();
+					break;
+				 case INSERT:
 					categories[e.item.getState().ordinal()].add(e.item);
 					break;
 				 case DELETE:
 					for (HashSet<StateObject> cat : categories)
 						if (cat.remove(e.item))
 							break switchBlock;
-					return; // Nothing changed
+					//$FALL-THROUGH$
+				 default:
+					if (!changed)
+						return; // Nothing changed
+					break;
 				 case UPDATE:
 					HashSet<StateObject> myCat = categories[e.item.getState().ordinal()];
 					if (!myCat.add(e.item))
@@ -457,12 +513,9 @@ public final class JenuSiteWindow extends JenuFrame
 							break;
 					break;
 				}
-				fireChanged();
-			}
-
-			public void reset()
-			{	for (HashSet<StateObject> cat : categories)
-					cat.clear();
+				changed = true;
+				if (!e.more)
+					fireChanged();
 			}
 
 			private final ArrayList<StackedBarModelListener> listeners = new ArrayList<>();
@@ -476,6 +529,7 @@ public final class JenuSiteWindow extends JenuFrame
 			{	StackedBarModelEvent e = new StackedBarModelEvent(this, -1);
 				for (StackedBarModelListener l : listeners)
 					l.dataChanged(e);
+				changed = false;
 			}
 		}
 	}

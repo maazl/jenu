@@ -12,7 +12,11 @@ import java.util.concurrent.atomic.AtomicReference;
 import jenu.utils.AtomicRef;
 
 /** Provides information for exactly one page.
- * All methods of this class are thread-safe, but iteration over returned collections is not. */
+ * All methods of this class are thread-safe, but iteration over returned collections is not.
+ *
+ * Furthermore the result of all getter methods (unless otherwise noted)
+ * is stable as soon as {@link #getState} returns greater than {@code RUNNUNG}.
+ * In this case no further actions are required for enumeration. */
 public abstract class Page
 {
 	/** Absolute URL of this document as String, primary key, never null. */
@@ -30,13 +34,13 @@ public abstract class Page
 		this.state = new AtomicReference<>(PageState.VIRGIN);
 	}
 
-	/** What is the task status of this page excluding anchor messages? */
+	/** What is the task status of this page excluding incoming links? */
 	public final PageState getState()
 	{	return state.get();
 	}
 	protected final AtomicReference<PageState> state;
 
-	/** Which events occurred, never null */
+	/** Which events occurred, never null. */
 	public final Collection<Message> getEvents()
 	{	return events != null ? events : Collections.emptyList();
 	}
@@ -49,7 +53,7 @@ public abstract class Page
 	protected volatile long duration = 0;
 
 
-	/** MIME type */
+	/** MIME type if known. */
 	public final String getContentType()
 	{	return contentType;
 	}
@@ -61,25 +65,26 @@ public abstract class Page
 	}
 	protected volatile long size = -1;
 
-	/** Source code lines of document or -1 if unknown */
+	/** Source code lines of document or -1 if unknown. */
 	public final int getLines()
 	{	return lines;
 	}
 	protected volatile int lines = -1;
 
-	/** Document title or null if not available */
+	/** Document title or null if not available. */
 	public final String getTitle()
 	{	return title;
 	}
 	protected volatile String title = null;
 
-	/** Document/file modification date or null if unknown */
+	/** Document/file modification date or null if unknown. */
 	public final Date getDate()
 	{	return date;
 	}
 	protected volatile Date date = null;
 
 	/** Get links from other documents that point to this object.
+	 * Attention: this collection can change even when {@link #getState} returns {@code DONE}.
 	 * @return List of links to this object. Keep in mind that the collection is synchronized but mutable.
 	 * So iteration is not thread safe, but calling toArray is. */
 	public final Collection<Link> getLinksIn()
@@ -89,6 +94,7 @@ public abstract class Page
 
 
 	/** Link depth of this document, i.e. shortest path from one of the starting points.
+	 * Attention: the level can change even when {@link #getState} returns {@code DONE} because a shorter path could be found.
 	 * @return 0 = starting point; Integer.MAX_VALUE = undefined;
 	 * anything else = at least n links from a starting point away. */
 	public int getLevel()
@@ -98,7 +104,8 @@ public abstract class Page
 
 	/** Get links from this document to other objects.
 	 * @return List of links from this object. Keep in mind that the collection is synchronized but mutable.
-	 * So iteration is not thread safe, but calling toArray is. */
+	 * So iteration is not thread safe, but calling toArray is.
+	 * However, once {@link #getState} returns greater than {@code RUNNUNG}. The collection is frozen. */
 	public Collection<Link> getLinksOut()
 	{	Collection<Link> ret = linksOut;
 		return ret != null ? ret : Collections.<Link>emptyList();
@@ -108,9 +115,7 @@ public abstract class Page
 	/** Anchor names defined in this document.
 	 * @return List of Anchors associated with an optional message.
 	 * If the associated message is null the anchor exists.
-	 * Otherwise it is an error message.
-	 * Keep in mind that the map is synchronized but mutable.
-	 * So iteration is not thread safe, but calling toArray is. */
+	 * Otherwise it is an error message. */
 	public Map<String,Message> getAnchors()
 	{	Map<String,Message> ret = anchors.get();
 		return ret != null ? ret : Collections.<String,Message>emptyMap();

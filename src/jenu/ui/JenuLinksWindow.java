@@ -9,7 +9,7 @@ import javax.swing.JScrollPane;
 import javax.swing.ScrollPaneConstants;
 
 import jenu.model.Page;
-import jenu.ui.viewmodel.ALinkView;
+import jenu.ui.viewmodel.LinksView;
 import jenu.ui.viewmodel.LinksInView;
 import jenu.ui.viewmodel.LinksOutView;
 import jenu.worker.ThreadManager;
@@ -18,7 +18,7 @@ import jenu.worker.ThreadManager;
  */
 public final class JenuLinksWindow extends JenuFrame
 {
-	private final JenuLinksTable m_table;
+	private final JenuTable<LinksView.LinkRow> m_table;
 	private final JScrollPane m_scroll;
 	private final WeakReference<ThreadManager> m_tm;
 
@@ -41,12 +41,12 @@ public final class JenuLinksWindow extends JenuFrame
 		return window;
 	}
 
-	private JenuLinksWindow(ThreadManager tm, String title, ALinkView model)
+	private JenuLinksWindow(ThreadManager tm, String title, LinksView model)
 	{
 		super(title);
 		m_scroll = new JScrollPane(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS);
 		getContentPane().add(m_scroll, BorderLayout.CENTER);
-		m_table = new JenuLinksTable(model);
+		m_table = new JenuTable<>(model);
 		m_scroll.setViewportView(m_table);
 
 		setPreferredSize(new Dimension(500, 560));
@@ -65,7 +65,7 @@ public final class JenuLinksWindow extends JenuFrame
 		assert ret == this;
 		ThreadManager tm = m_tm.get();
 		if (tm != null)
-			tm.removePageListener(m_table.getModel());
+			tm.removePageListener((LinksView)m_table.getModel());
 		super.dispose();
 	}
 }
