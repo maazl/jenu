@@ -12,24 +12,21 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
-import javax.swing.AbstractButton;
-import javax.swing.Action;
-import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
-import javax.swing.JMenu;
 import javax.swing.JMenuBar;
-import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JProgressBar;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JToolBar;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
+import static jenu.ui.JenuUIUtils.*;
 import jenu.ui.component.StackedBar;
 import jenu.ui.component.StackedBarColorModel;
 import jenu.ui.component.StackedBarModel;
@@ -105,13 +102,12 @@ public final class JenuSiteWindow extends JenuFrame
 		m_site = site;
 
 		setJMenuBar(new JMenuBar());
-		makeMenu("Site", aNew, aOpen, aSave, aSaveAs, aSaveDefault, null, aEdit, null, aReset, aClose);
+		getJMenuBar().add(makeMenu("Site", aNew, aOpen, aSave, aSaveAs, aSaveDefault, null, aEdit, null, aReset, aClose));
 		JRadioButtonMenuItem[] views = new JRadioButtonMenuItem[] { new JRadioButtonMenuItem(aTargetView), new JRadioButtonMenuItem(aSourceView) };
 		views[0].setSelected(true);
-		ButtonGroup group = new ButtonGroup();
-		for (AbstractButton b : views)
-			group.add(b);
-		makeMenu("View", views);
+		makeButtonGroup(views);
+		getJMenuBar().add(makeMenu("View", views));
+		getJMenuBar().add(makeMenu("Help", aAbout));
 
 		m_toolBar = new ToolBar();
 		getContentPane().add(m_toolBar, BorderLayout.NORTH);
@@ -119,7 +115,7 @@ public final class JenuSiteWindow extends JenuFrame
 		m_statusBar = new StatusBar();
 		getContentPane().add(m_statusBar, BorderLayout.SOUTH);
 
-		m_scroll = new JScrollPane(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
+		m_scroll = new JScrollPane(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS);
 		getContentPane().add(m_scroll, BorderLayout.CENTER);
 
 		PageView<?> model = getModel();
@@ -276,6 +272,8 @@ public final class JenuSiteWindow extends JenuFrame
 		}
 	}
 
+	final FunctionalAction aAbout = new FunctionalAction("About", (e) -> JenuAbout.openWindow(this));
+
 	private PageView<?> getModel()
 	{	if (useSourceView)
 			return new SourceView();
@@ -334,27 +332,6 @@ public final class JenuSiteWindow extends JenuFrame
 		 default:
 			break;
 		}
-	}
-
-	private JMenu makeMenu(String title, Action ... items)
-	{	JMenu menu = new JMenu(title);
-		for (Action a : items)
-			if (a == null)
-				menu.addSeparator();
-			else
-				menu.add(a);
-		getJMenuBar().add(menu);
-		return menu;
-	}
-	private JMenu makeMenu(String title, JMenuItem ... items)
-	{	JMenu menu = new JMenu(title);
-		for (JMenuItem a : items)
-			if (a == null)
-				menu.addSeparator();
-			else
-				menu.add(a);
-		getJMenuBar().add(menu);
-		return menu;
 	}
 
 	private final class ToolBar extends JToolBar

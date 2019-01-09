@@ -7,6 +7,12 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
 
+import javax.swing.AbstractButton;
+import javax.swing.Action;
+import javax.swing.ButtonGroup;
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
+
 import jenu.ui.viewmodel.RowState;
 
 final class JenuUIUtils
@@ -43,6 +49,43 @@ final class JenuUIUtils
 	private final static Color MyGREEN = new Color(0x00aa00);
 	private final static Color MyYELLOW = new Color(0xaa9900);
 	private final static Color MyCYAN = new Color(0x008888);
+
+	/** Construct a menu from a set of actions.
+	 * @param title Menu title
+	 * @param items Actions to add. {@code null} entries create separators.
+	 * @return new menu. In general you want to add the result to a menu bar. */
+	public static JMenu makeMenu(String title, Action ... items)
+	{	JMenu menu = new JMenu(title);
+		for (Action a : items)
+			if (a == null)
+				menu.addSeparator();
+			else
+				menu.add(a);
+		return menu;
+	}
+	/** Construct a menu from a set of menu items.
+	 * @param title Menu title
+	 * @param items Menu items to add. {@code null} entries create separators.
+	 * @return new menu. In general you want to add the result to a menu bar. */
+	public static JMenu makeMenu(String title, JMenuItem... items)
+	{	JMenu menu = new JMenu(title);
+		for (JMenuItem a : items)
+			if (a == null)
+				menu.addSeparator();
+			else
+				menu.add(a);
+		return menu;
+	}
+
+	/** Put a set of buttons in a group to build a radio button group.
+	 * @param buttons Set of buttons.
+	 * @return The created button group. Typically you can safely ignore this return value. */
+	public static ButtonGroup makeButtonGroup(AbstractButton... buttons)
+	{	ButtonGroup group = new ButtonGroup();
+		for (AbstractButton b : buttons)
+			group.add(b);
+		return group;
+	}
 
 	/** Open an URL in external browser.
 	 * @param url URL to open. null is allowed too and causes no action.
