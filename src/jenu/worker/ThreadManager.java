@@ -157,7 +157,7 @@ public final class ThreadManager
 		{	if (level >= cfg.maxDepth)
 				return; // too deep
 
-			page = getPage(link.source != null ? link.source.url : null, link.getTargetUrl());
+			page = getPage(link.source != null ? link.source.url : null, link.getTargetLink());
 
 			if (page.schedulePage())
 			{	// My thread added the page

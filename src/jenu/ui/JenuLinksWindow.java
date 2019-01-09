@@ -47,6 +47,7 @@ public final class JenuLinksWindow extends JenuFrame
 		m_scroll = new JScrollPane(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS);
 		getContentPane().add(m_scroll, BorderLayout.CENTER);
 		m_table = new JenuTable<>(model);
+		m_table.addMouseListener(m_table.new MouseClickListener(this::doubleClickLink));
 		m_scroll.setViewportView(m_table);
 
 		setPreferredSize(new Dimension(500, 560));
@@ -67,5 +68,18 @@ public final class JenuLinksWindow extends JenuFrame
 		if (tm != null)
 			tm.removePageListener((LinksView)m_table.getModel());
 		super.dispose();
+	}
+
+	private void doubleClickLink(LinksView.LinkRow rowData, int col)
+	{	switch (LinksView.Column.fromOrdinal(col))
+		{case Target:
+			JenuUIUtils.openInBrowser(rowData.link.getTargetUrl());
+			break;
+		 case Source:
+			JenuUIUtils.openInBrowser(rowData.link.source.url);
+			break;
+		 default:
+			break;
+		}
 	}
 }

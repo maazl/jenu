@@ -4,8 +4,6 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
@@ -32,7 +30,6 @@ import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
-import jenu.Jenu;
 import jenu.ui.component.StackedBar;
 import jenu.ui.component.StackedBarColorModel;
 import jenu.ui.component.StackedBarModel;
@@ -54,7 +51,7 @@ import jenu.worker.WorkerListener;
 /** Main user interface for backend worker.
  * An instance of this class shows a frame window with a complete UI.
  * Create it via the static method @see openWindow.
- * Several Windows can coexist. */
+ * Several Windows can coexist, but no more than one window per working set. */
 public final class JenuSiteWindow extends JenuFrame
 {
 	private final ToolBar m_toolBar;
@@ -77,7 +74,7 @@ public final class JenuSiteWindow extends JenuFrame
 	}
 
 	/** default configuration file. New instances of Site will use this file. */
-	public final static File defaultSiteFile = new File(Jenu.userHome, ".jenuSite");
+	public final static File defaultSiteFile = new File(JenuUIUtils.userHome, ".jenuSite");
 
 	private static final HashMap<Site,JenuSiteWindow> map = new HashMap<>();
 
@@ -128,15 +125,7 @@ public final class JenuSiteWindow extends JenuFrame
 		PageView<?> model = getModel();
 		m_table = new JenuTable<>(model);
 		m_table.setMinimumSize(new Dimension(800,0));
-		m_table.addMouseListener( new MouseAdapter()
-			{	public void mouseClicked(MouseEvent e)
-				{	if (e.getClickCount() >= 2)
-					{	int column = m_table.columnAtPoint(e.getPoint());
-						if (column >= 0)
-						{	int row = m_table.rowAtPoint(e.getPoint());
-							if (row >= 0)
-								doubleClickLink(m_table.getModel().getRow(m_table.convertRowIndexToModel(row)), TargetView.Column.fromOrdinal(m_table.convertColumnIndexToModel(column)));
-			}	}	}	} );
+		m_table.addMouseListener(m_table.new MouseClickListener(this::doubleClickLink));
 
 		m_scroll.setViewportView(m_table);
 
@@ -331,13 +320,16 @@ public final class JenuSiteWindow extends JenuFrame
 		return true;
 	}
 
-	private void doubleClickLink(PageView.PageRow rowData, TargetView.Column col)
-	{	switch (col)
+	private void doubleClickLink(PageView.PageRow rowData, int col)
+	{	switch (TargetView.Column.fromOrdinal(col))
 		{case Links_in:
 			JenuLinksWindow.openWindow(m_tm, rowData.page, LinkWindowType.LinksIn);
 			break;
 		 case Links_out:
 			JenuLinksWindow.openWindow(m_tm, rowData.page, LinkWindowType.LinksOut);
+			break;
+		 case Address:
+			JenuUIUtils.openInBrowser(rowData.page.url);
 			break;
 		 default:
 			break;

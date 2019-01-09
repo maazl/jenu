@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.function.Function;
+import java.util.function.ObjIntConsumer;
 
 import javax.swing.JTable;
 import javax.swing.RowSorter;
@@ -37,7 +38,7 @@ class JenuTable<R extends StateObject> extends JTable
 		setDefaultRenderer(Message[].class, new MessagesRenderer());
 
 		getTableHeader().setReorderingAllowed(true);
-		getTableHeader().addMouseListener(new MyMouseListener());
+		getTableHeader().addMouseListener(new HeaderMouseListener());
 		setShowGrid(false);
 	}
 
@@ -173,7 +174,7 @@ class JenuTable<R extends StateObject> extends JTable
 		}
 	}
 
-	private final class MyMouseListener extends MouseAdapter
+	private final class HeaderMouseListener extends MouseAdapter
 	{
 		public void mouseClicked(MouseEvent e)
 		{
@@ -187,5 +188,25 @@ class JenuTable<R extends StateObject> extends JTable
 				}
 			}
 		}
+	}
+
+	public class MouseClickListener extends MouseAdapter
+	{
+		private final ObjIntConsumer<R> eh;
+
+		public MouseClickListener(ObjIntConsumer<R> eh)
+		{	this.eh = eh;
+		}
+
+		public void mouseClicked(MouseEvent e)
+		{	if (e.getClickCount() >= 2)
+			{	int column = columnAtPoint(e.getPoint());
+				if (column >= 0)
+				{	column = convertColumnIndexToModel(column);
+					int row = rowAtPoint(e.getPoint());
+					if (row >= 0)
+					{	row = convertRowIndexToModel(row);
+						eh.accept(getModel().getRow(row), column);
+		}	}	}	}
 	}
 }

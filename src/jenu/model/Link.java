@@ -1,5 +1,8 @@
 package jenu.model;
 
+import java.net.MalformedURLException;
+import java.net.URL;
+
 /** Represents a Link between two pages. */
 public class Link
 {
@@ -28,10 +31,10 @@ public class Link
 		return p >= 0 ? originalTarget.substring(p + 1) : null;
 	}
 
-	/** Get target URL (unparsed) without any anchor.
+	/** Get target link (unparsed) without any anchor.
 	 * @return relative or absolute URL, but without anchor.
-	 * If originalTarget consists only of an anchor "." is returned. */
-	public final String getTargetUrl()
+	 * If originalTarget consists only of an anchor "" is returned. */
+	public final String getTargetLink()
 	{	int p = originalTarget.indexOf("#");
 		switch (p)
 		{case -1:
@@ -40,6 +43,22 @@ public class Link
 			return "";
 		 default:
 			return originalTarget.substring(0, p);
+		}
+	}
+
+	/** Get full qualified target URL including anchor.
+	 * @return URL or null if not valid. */
+	public final URL getTargetUrl()
+	{	Page target = this.target;
+		if (target == null)
+			return null;
+		String anchor = getAnchor();
+		if (anchor == null)
+			return target.url;
+		try
+		{	return new URL(target.sUrl + "#" + anchor);
+		} catch (MalformedURLException e)
+		{	return null; // can't help but should never happen if only an anchor is added.
 		}
 	}
 
@@ -70,47 +89,6 @@ public class Link
 		this.source = source;
 		this.sourceLine = line;
 	}
-
-	/*private static class EventsCache
-	{
-		public final Message[] events;
-		public final int targetRevision;
-
-		public EventsCache(final Link link)
-		{	final Message message = link.message;
-			final Page target = link.target;
-			targetRevision = target != null ? target.revision : -1;
-			if (target != null)
-			{	final Message[] events = target.events.toArray(Message.none);
-				// remove parser errors
-				int retlen = 0;
-				while (retlen < events.length)
-				{	if (!events[retlen].isLinkError())
-					{	// first entry to be discarded
-						for (int i = retlen; ++i < events.length; )
-							if (events[retlen].isLinkError())
-								events[retlen++] = events[i];
-						break;
-					}
-				}
-				// Anything left?
-				if (retlen != 0)
-				{	final int totalLen = message != null ? retlen + 1 : retlen;
-					if (totalLen != events.length)
-					{	this.events = new Message[totalLen];
-						System.arraycopy(events, 0, this.events, 0, retlen);
-					} else
-						this.events = events;
-					if (message != null)
-						this.events[retlen] = message;
-					return;
-				}
-			}
-			// no target so far or no relevant target messages => message only.
-			events = message == null ? noMessages : new Message[] { message };
-		}
-
-	}*/
 
 	public final static Link[] noLinks = new Link[0];
 }
