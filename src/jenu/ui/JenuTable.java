@@ -84,6 +84,8 @@ class JenuTable<R extends StateObject> extends JTable
 			if (comp != null)
 				sorter.setComparator(i, comp);
 		}
+		if (sortOrder.get(0).getColumn() >= 0)
+			sorter.setSortKeys(sortOrder);
 		setRowSorter(sorter);
 	}
 
