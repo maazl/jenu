@@ -2,6 +2,7 @@ package jenu.ui;
 
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Graphics;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
@@ -47,6 +48,9 @@ class JenuTable<R extends StateObject> extends JTable
 
 	protected final static Color zebraBackground = new Color(0xeeeeee);
 
+	private int lastRow = -1;
+	private Color rowColor;
+
 	public Component prepareRenderer(TableCellRenderer renderer, int row, int column)
 	{
 		Component c = super.prepareRenderer(renderer, row, column);
@@ -56,9 +60,18 @@ class JenuTable<R extends StateObject> extends JTable
 			c.setBackground((row & 1) != 0 ? getBackground() : zebraBackground);
 		}
 
-		c.setForeground(JenuUIUtils.getStateColor(getModel().getRow(convertRowIndexToModel(row)).getState()));
+		if (row != lastRow)
+		{	rowColor = JenuUIUtils.getStateColor(getModel().getRow(convertRowIndexToModel(row)).getState());
+			lastRow = row;
+		}
+		c.setForeground(rowColor);
 
 		return c;
+	}
+
+	@Override protected void paintComponent(Graphics g)
+	{	lastRow = -1; // invalidate Cache
+		super.paintComponent(g);
 	}
 
 	@Override public void setModel(TableModel dataModel)
