@@ -140,7 +140,7 @@ public class SourceView extends PageView<SourceView.PageRow>
 					continue; // this anchor is already done
 				// create anchor message?
 				Message m = target.getAnchors().get(anchor);
-				if (m != null)
+				if (m != null && m != Page.noMessage)
 					result.add(new Message(m.type, m.level, anchorUrl));
 			}
 

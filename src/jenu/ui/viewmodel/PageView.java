@@ -169,7 +169,7 @@ public abstract class PageView<R extends PageView.PageRow> extends StateObjectVi
 			int o = 0;
 			for (Message m : getEffectiveEvents())
 				if (m.level.ordinal() > o)
-					o = m.level.ordinal() + 1;
+					o = m.level.ordinal();
 			return RowState.valueOf(RowState.OK.ordinal() + o);
 		}
 	}

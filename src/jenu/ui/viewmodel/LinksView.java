@@ -108,11 +108,11 @@ public abstract class LinksView extends StateObjectView<LinksView.LinkRow> imple
 			final PageState ps = target .getState();
 			if (ps != PageState.DONE)
 				return RowState.valueOf(ps.ordinal());
-			int o = -1;
+			int o = 0;
 			for (Message m : getEffectiveEvents())
 				if (m.level.ordinal() > o)
 					o = m.level.ordinal();
-			return RowState.valueOf(RowState.OK.ordinal() + 1 + o);
+			return RowState.valueOf(RowState.OK.ordinal() + o);
 		}
 
 		@Override public Message[] getEffectiveEvents()

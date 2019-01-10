@@ -114,11 +114,14 @@ public abstract class Page
 
 	/** Anchor names defined in this document.
 	 * @return List of Anchors associated with an optional message.
-	 * If the associated message is null the anchor exists.
+	 * If the associated message is noMessage the anchor exists.
 	 * Otherwise it is an error message. */
 	public Map<String,Message> getAnchors()
 	{	Map<String,Message> ret = anchors.get();
 		return ret != null ? ret : Collections.<String,Message>emptyMap();
 	}
 	protected final AtomicRef<Map<String,Message>> anchors = new AtomicRef<>();
+
+	/** Placeholder for null because otherwise the is no atomic computeIfAbsent method. */
+	public final static Message noMessage = new Message(MessageType.Bad_anchor, Severity.NONE, "");
 }

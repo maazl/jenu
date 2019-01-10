@@ -146,9 +146,6 @@ final class PageStats extends Page
 	{	return anchors.weakLazyInit(() -> Collections.synchronizedMap(new HashMap<>()));
 	}
 
-	/** Internal placeholder for null because otherwise the is no atomic computeIfAbsent method. */
-	private final static Message noMessage = new Message(MessageType.Bad_anchor, Severity.ERROR,  "");
-
 	/** Add existing anchor defined in this document. */
 	void addAnchor(String name)
 	{	ensureAnchors().put(name, noMessage);
