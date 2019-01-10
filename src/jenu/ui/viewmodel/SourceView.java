@@ -34,14 +34,16 @@ public class SourceView extends PageView<SourceView.PageRow>
 		{	row = addNewRow(e.page);
 			fireTableRowsInserted(row.index, row.index);
 			fireStateObjectEvent(row, EventType.INSERT, false);
-		} else
+		} else if (e.type == PageEventType.LINKSIN)
+			return; // Ignore LINKSIN changes. New pages linking to this page are updated anyway.
 		{	row = map.get(e.page);
 			if (row == null)
 				return;
-			if (e.type != PageEventType.LINKSIN)
-				invalidateRow(row, false);
+			invalidateRow(row, false);
 		}
 		// invalidate rows of /incoming/ links as well.
+		if (e.page.getState() == PageState.PENDING)
+			return; // No update on links to pending objects. They do not add any value.
 		boolean changed = false;
 		for (Link l : e.page.getLinksIn().toArray(Link.noLinks))
 		{	PageRow row2 = map.get(l.source);
@@ -65,6 +67,7 @@ public class SourceView extends PageView<SourceView.PageRow>
 	@Override protected PageRow addNewRow(Page page)
 	{	PageRow row = new PageRow(page, data.size());
 		data.add(row);
+		map.put(page, row);
 		return row;
 	}
 
