@@ -121,38 +121,53 @@ class JenuTable<R extends StateObject> extends JTable
 		}
 	}
 
-	protected static class MessagesRenderer extends MultiLineCellRenderer<Message[]>
+	protected static class MessagesRenderer extends MultiLineCellRenderer
 	{
-		@Override protected String renderValue(Message[] values)
-		{	if (values == null || values.length == 0)
-				return "";
-			if (values.length == 1) // fast path for only one message
-				return values[0].message;
-			StringBuffer sb = new StringBuffer();
-			for (Message m : values)
-			{	if (sb.length() != 0)
-					sb.append('\n');
-				sb.append(m.message);
+		@Override protected void setValue(Object value)
+		{	Message[] values = (Message[])value;
+			if (values != null)
+			{	switch (values.length)
+				{case 0:
+					value = null;
+					break;
+				 case 1: // fast path for only one message
+					value = values[0].message;
+					break;
+				 default:
+					StringBuffer sb = new StringBuffer();
+					for (Message m : values)
+					{	if (sb.length() != 0)
+							sb.append('\n');
+						sb.append(m.message);
+					}
+					value = sb.toString();
+				}
 			}
-			return sb.toString();
+			super.setValue(value);
 		}
 	}
 
-	protected static class EnumSetRenderer extends MultiLineCellRenderer<EnumSet<?>>
+	protected static class EnumSetRenderer extends MultiLineCellRenderer
 	{
-		@Override protected String renderValue(EnumSet<?> set)
-		{	if (set.isEmpty())
-				return "";
-			StringBuffer sb = new StringBuffer();
-			for (Object ev : set)
-			{	if (sb.length() != 0)
-					sb.append('\n');
-				sb.append(ev);
+		@Override protected void setValue(Object value)
+		{	EnumSet<?> set = (EnumSet<?>)value;
+			if (set != null)
+			{	if (set.isEmpty())
+					value = null;
+				else
+				{	StringBuffer sb = new StringBuffer();
+					for (Object ev : set)
+					{	if (sb.length() != 0)
+							sb.append('\n');
+						sb.append(ev);
+					}
+					for (int i = 0; i < sb.length(); i++)
+						if (sb.charAt(i) == '_')
+							sb.setCharAt(i, ' ');
+					value = sb.toString();
+				}
 			}
-			for (int i = 0; i < sb.length(); i++)
-				if (sb.charAt(i) == '_')
-					sb.setCharAt(i, ' ');
-			return sb.toString();
+			super.setValue(value);
 		}
 	}
 

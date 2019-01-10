@@ -3,53 +3,26 @@ package jenu.ui;
 import java.awt.Component;
 
 import javax.swing.JTable;
-import javax.swing.JTextArea;
-import javax.swing.UIManager;
-import javax.swing.border.EmptyBorder;
-import javax.swing.table.TableCellRenderer;
+import javax.swing.table.DefaultTableCellRenderer;
 
-class MultiLineCellRenderer<T> extends JTextArea implements TableCellRenderer
+/** Variant of DefaultTableCellRenderer that automatically switches to multi-line HTML when the value contains newlines. */
+class MultiLineCellRenderer extends DefaultTableCellRenderer
 {
-	public MultiLineCellRenderer()
-	{	//setLineWrap(true);
-		//setWrapStyleWord(true);
-		setOpaque(true);
-	}
+	@Override public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column)
+	{	Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 
-	@SuppressWarnings("unchecked")
-	@Override public Component getTableCellRendererComponent(JTable table, Object value,
-		boolean isSelected, boolean hasFocus, int row, int column)
-	{
-		if (isSelected)
-		{
-			setForeground(table.getSelectionForeground());
-			setBackground(table.getSelectionBackground());
-		} else
-		{
-			setForeground(table.getForeground());
-			setBackground(table.getBackground());
-		}
-		setFont(table.getFont());
-		if (hasFocus)
-		{
-			setBorder(UIManager.getBorder("Table.focusCellHighlightBorder"));
-			if (table.isCellEditable(row, column))
-			{
-				setForeground(UIManager.getColor("Table.focusCellForeground"));
-				setBackground(UIManager.getColor("Table.focusCellBackground"));
-			}
-		} else
-		{
-			setBorder(new EmptyBorder(1, 1, 1, 1));
-		}
-		setText(renderValue((T)value));
-		int height = getPreferredSize().height;
+		int height = c.getPreferredSize().height;
 		if (table.getRowHeight(row) < height)
 			table.setRowHeight(row, height);
-		return this;
+		return c;
 	}
 
-	protected String renderValue(T value)
-	{	return value == null ? "" : value.toString();
+	@Override protected void setValue(Object value)
+	{	if (value instanceof String)
+		{	String sVal = (String)value;
+			if (sVal.indexOf('\n') >= 0 && !(sVal.startsWith("<html>") && sVal.endsWith("</html>")))
+				value = "<html><nobr>" + JenuUIUtils.htmlEncodeLines(sVal) + "</nobr></html>";
+		}
+		super.setValue(value);
 	}
 }

@@ -13,6 +13,7 @@ import javax.swing.ButtonGroup;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 
+import static jenu.utils.Statics.*;
 import jenu.ui.viewmodel.RowState;
 
 final class JenuUIUtils
@@ -22,6 +23,46 @@ final class JenuUIUtils
 
 	/** Home directory of the user to store configuration files. */
 	public final static File userHome = new File(System.getProperty("user.home"));
+
+	private static String htmlEncode(char c)
+	{	switch (c)
+		{case '<':
+			return "&lt;";
+		 case '>':
+			return "&gt;";
+		 case '&':
+			return "&amp;";
+		 case '\n':
+			return "<br>";
+		}
+		return Character.toString(c);
+	}
+	private static String htmlEncode(String s, String set)
+	{	// find first char to encode
+		int i = indexOfAny(s, set);
+		if (i < 0)
+			return s;
+		StringBuffer sb = new StringBuffer(s.length() + 20);
+		int j = 0;
+		do
+		{	sb.append(s, j, i).append(htmlEncode(s.charAt(i)));
+			i = indexOfAny(s, set, j = i + 1);
+		} while (i >= 0);
+		sb.append(s, j, s.length());
+		return sb.toString();
+	}
+	/** Encode string as HTML.
+	 * @param s String to encode.
+	 * @return Encoded String. */
+	public static String htmlEncode(String s)
+	{	return htmlEncode(s, "<>&");
+	}
+	/** Encode string as HTML. Convert newlines to &lt;br&gt; as well.
+	 * @param s String to encode.
+	 * @return Encoded String. */
+	public static String htmlEncodeLines(String s)
+	{	return htmlEncode(s, "<>&\n");
+	}
 
 	/** Determine foreground color from row state.
 	 * @param runState State of the table row.

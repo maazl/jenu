@@ -71,6 +71,25 @@ public final class Statics
 	{	removeAdjacentDuplicates(collection, Objects::equals);
 	}
 
+	/** Find the first occurrence of <em>any</em> character of set in a string.
+	 * @param s String where to search the characters.
+	 * @param set Set of matching characters.
+	 * @param start Start searching at this index of s.
+	 * @return Location of the first character of set in s or -1 if none is found. */
+	public static int indexOfAny(String s, String set, int start)
+	{	for (int i = start; i < s.length(); ++i)
+			if (set.indexOf(s.charAt(i)) >= 0)
+				return i;
+		return -1;
+	}
+	/** Find the first occurrence of <em>any</em> character of set in a string.
+	 * @param s String where to search the characters.
+	 * @param set Set of matching characters.
+	 * @return Location of the first character of set in s or -1 if none is found. */
+	public static int indexOfAny(String s, String set)
+	{	return indexOfAny(s, set, 0);
+	}
+
 	/** Locate element in an array by linear search.
 	 * @param array Array
 	 * @param value Object to search for
